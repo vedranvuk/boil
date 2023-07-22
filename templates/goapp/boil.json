@@ -1,0 +1,26 @@
+{
+	"name": "goapp",
+	"description": "Simple Go command application",
+	"author": {
+		"name": "Vedran Vuk",
+		"email": "vedranvuk82@gmail.com",
+		"homepage": "http://goatse.cx"
+	},
+	"version": "1.0",
+	"url": "http://goatse.cx",
+	"email": "vedranvuk82@gmail.com",
+	"files": [
+		".vscode/launch.json",
+		".vscode/tasks.json",
+		"cmd/$ProjectName/gen.go",
+		"cmd/$ProjectName/main.go",
+		"go.mod",
+		"README.md"
+	],
+	"directories": [
+		".vscode",
+		"cmd",
+		"cmd/$ProjectName",
+		"pkg"
+	]
+}
