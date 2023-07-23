@@ -58,18 +58,18 @@ type Metadata struct {
 	directory string
 }
 
-// ErrNoMetadata is returned by LoadMetadataFromDir if a metadata file
+// errNoMetadata is returned by LoadMetadataFromDir if a metadata file
 // does not exist in specified directory.
-var ErrNoMetadata = errors.New("no metadata found")
+var errNoMetadata = errors.New("no metadata found")
 
 // LoadMetadataFromDir loads metadata from dir and returns it or an error.
 func LoadMetadataFromDir(dir string) (metadata *Metadata, err error) {
 	var buf []byte
 	if buf, err = ioutil.ReadFile(filepath.Join(dir, MetafileName)); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, ErrNoMetadata
+			return nil, errNoMetadata
 		}
-		return nil, errors.New("not a boil template directory, missing metafile")
+		return nil, fmt.Errorf("stat for metafile: %w", err)
 	}
 	metadata = &Metadata{directory: dir}
 	if err = json.Unmarshal(buf, metadata); err != nil {
@@ -81,13 +81,15 @@ func LoadMetadataFromDir(dir string) (metadata *Metadata, err error) {
 // Metamap maps a template path to metadata loaded from its directory.
 type Metamap map[string]*Metadata
 
-// LoadMetamap loads metadata from root directory recursively and returns it
-// or an error.
+// LoadMetamap loads metadata from root directory recursively and
+// returns it or returns a descriptive error if one occured.
 //
-// The resulting Metamap will contain a key for each subdirectory found in root
-// i.e. 'apps/webapp'.
+// The resulting Metamap will contain a key for each subdirectory
+// recursively found in the repository. Only keys of paths to directories
+// containing a Metafile, i.e. Template directories will have a valid
+// *Metadata value. All other keys will have a nil value.
 //
-// Directories that do not contain a boil metafile will have a nil Metadata.
+// The format of keys is a path relative to repo root i.e. 'apps/cli'.
 func LoadMetamap(root string) (m Metamap, err error) {
 	var d *Metadata
 	m = make(Metamap)
@@ -97,7 +99,7 @@ func LoadMetamap(root string) (m Metamap, err error) {
 		}
 		d = nil
 		if d, err = LoadMetadataFromDir(path); err != nil {
-			if !errors.Is(err, ErrNoMetadata) {
+			if !errors.Is(err, errNoMetadata) {
 				return fmt.Errorf("load metamap: %w", err)
 			}
 			return nil

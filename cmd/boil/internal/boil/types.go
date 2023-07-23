@@ -1,6 +1,8 @@
 package boil
 
-import "strings"
+import (
+	"strings"
+)
 
 // Author defines a template author.
 type Author struct {
@@ -45,3 +47,4 @@ type Command struct {
 	// Placeholders in arguments are expended.
 	Arguments []string
 }
+

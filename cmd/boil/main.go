@@ -45,25 +45,25 @@ func main() {
 				LongName:    "verbose",
 				ShortName:   "v",
 				Help:        "Enable verbose output.",
-				MappedValue: &programConfig.State.Verbose,
+				MappedValue: &programConfig.Overrides.Verbose,
 			},
 			&cmdline.Boolean{
 				LongName:    "prompt",
 				ShortName:   "p",
 				Help:        "Prompt for missing required arguments via stdin.",
-				MappedValue: &programConfig.State.Prompt,
+				MappedValue: &programConfig.Overrides.Prompt,
 			},
 			&cmdline.Optional{
 				LongName:    "config",
 				ShortName:   "c",
 				Help:        "Override filename of config file to use.",
-				MappedValue: &programConfig.State.ConfigFile,
+				MappedValue: &programConfig.Overrides.ConfigFile,
 			},
 			&cmdline.Optional{
 				LongName:    "repository",
 				ShortName:   "r",
 				Help:        "Override directory of repository to use.",
-				MappedValue: &programConfig.Repository,
+				MappedValue: &programConfig.Overrides.Repository,
 			},
 		},
 		Commands: cmdline.Commands{
@@ -92,13 +92,10 @@ func main() {
 						Name: "template-path",
 						Help: "Path to a project template (local or remote).",
 					},
-					&cmdline.Indexed{
-						Name: "module-path",
-						Help: "Project module path.",
-					},
-					&cmdline.Indexed{
-						Name: "target-dir",
-						Help: "Target directory.",
+					&cmdline.Optional{
+						LongName:  "target-dir",
+						ShortName: "t",
+						Help:      "Target directory.",
 					},
 					&cmdline.Optional{
 						LongName:  "project-name",
@@ -106,9 +103,19 @@ func main() {
 						Help:      "Specify project name.",
 					},
 					&cmdline.Boolean{
+						LongName:  "no-create-dir",
+						ShortName: "d",
+						Help:      "Do not create a directory for te project, write directly to target-dir.",
+					},
+					&cmdline.Boolean{
 						LongName:  "no-execute",
 						ShortName: "x",
 						Help:      "Do not execute commands.",
+					},
+					&cmdline.Optional{
+						LongName:  "module-path",
+						ShortName: "m",
+						Help:      "Module path to use for generating go.mod files.",
 					},
 					&cmdline.Repeated{
 						LongName:  "var",
@@ -116,9 +123,9 @@ func main() {
 						Help:      "Define a variale addressable from templates.",
 					},
 					&cmdline.Boolean{
-						LongName:  "no-create-dir",
-						ShortName: "d",
-						Help:      "Do not create a directory for te project, write directly to target-dir.",
+						LongName:  "overwrite",
+						ShortName: "w",
+						Help:      "Overwrite any existing files in target directory.",
 					},
 				},
 			},
@@ -184,14 +191,15 @@ func handleExec(c cmdline.Context) error {
 	}
 
 	return exec.Run(&exec.Config{
-		Config:       programConfig,
-		TemplatePath: c.RawValues("template-path").First(),
-		ModulePath:   c.RawValues("module-path").First(),
-		TargetDir:    c.RawValues("target-dir").First(),
-		ProjectName:  c.RawValues("project-name").First(),
-		NoExecute:    c.IsParsed("no-execute"),
-		NoCreateDir:  c.IsParsed("no-create-dir"),
-		Vars:         vars,
+		Config:        programConfig,
+		TemplatePath:  c.RawValues("template-path").First(),
+		ModulePath:    c.RawValues("module-path").First(),
+		TargetDir:     c.RawValues("target-dir").First(),
+		ProjectName:   c.RawValues("project-name").First(),
+		NoExecute:     c.IsParsed("no-execute"),
+		NoCreateDir:   c.IsParsed("no-create-dir"),
+		Overwrite:     c.IsParsed("overwrite"),
+		UserVariables: vars,
 	})
 }
 

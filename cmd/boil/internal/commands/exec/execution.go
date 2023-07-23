@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"text/template"
-
-	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
 )
 
 // Execution defines an execution of a single template file.
@@ -22,11 +20,13 @@ type Execution struct {
 	Target string
 }
 
-// NewExecution returns a new FileCopy or an error.
-// It takes vars to replace variables in template file names.
-func NewExecution(sourceFile, targetRoot string, isDir bool, vars *boil.Vars) (*Execution, error) {
-
-	return nil, nil
+// Data is the top level data structure passed to a Template file.
+type Data struct {
+	// Vars is a collection of system variables always present on template
+	// execution, generated from environment.
+	Vars map[string]string
+	// UserVars is a collection of variables given by the user during execution.
+	UserVars map[string]string
 }
 
 // Execute executes a FileCopy operation or returns an error.
@@ -57,4 +57,13 @@ func (self *Execution) Execute(data interface{}) error {
 	}
 
 	return nil
+}
+
+// Executions is a list of executions needed to execute a Boil template.
+type Executions []*Execution
+
+// PrepareExecutions prepares a list of executions from an Exec Config
+// or returns an error if one occurs.
+func PrepareExecutions(config *Config) (list []*Execution, err error) {
+	return nil, nil
 }

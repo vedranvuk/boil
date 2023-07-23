@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -15,60 +16,100 @@ import (
 
 // Config is a Create command configuration.
 type Config struct {
-	// Config is the loaded program configuration.
-	*boil.Config
-	// TemplatePath is the source template path.
+	// TemplatePath is the source template path. During Run() it is adjusted to
+	// an absolute Template path relative to working directory.s
+	//
+	// If the path is rooted, i.e. starts with "/" the path is treated as
+	// absolute path to a Template and no repository is being loaded or used.
+	//
+	// If the path is not rooted, the path is treated as a path to a Template
+	// relative to the loaded repository.
 	TemplatePath string
-	// ModulePath is the module path to use for the project.
-	ModulePath string
-	// TargetDir is the target project directory.
+
+	// TargetDir is the output directory where Template will be executed.
+	// See NoTargetDir description for more details.
 	TargetDir string
-	// NoCreateDir, if true will not create a directory based on the ProjectName
-	// but instead write all files directly in the TargetDir.
-	NoCreateDir bool
+
 	// ProjectName is the custom app name to use.
 	// Optional.
 	ProjectName string
+
+	// NoCreateDir, if true will not create a directory for the Template in the
+	// TargetDir but instead write all files directly to the TargetDir.
+	//
+	// If false, a new directory will be created in the TargetDir for Template
+	// output. It's name will be generated in the following way, priority first:
+	// 1. If not empty, from ProjectName.
+	// 2. From the last path element of the ModulePath.
+	NoCreateDir bool
+
+	// ModulePath is the module path to use when generating go.mod files.
+	ModulePath string
+
 	// NoExecute if true does not execute any write operations.
 	NoExecute bool
-	// Vars are optional variables defined by the user on command invocation
-	// and are passed to the template files.
-	Vars map[string]string
+	// Overwrite specifies wether to overwrite any existing files in the target directory.
+	Overwrite bool
+	// UserVariabled are variables given by the user on command line.
+	UserVariables map[string]string
+	// Config is the loaded program configuration.
+	*boil.Config
 }
 
 // CommandNew creates a new project from a template.
-func Run(cfg *Config) error {
+func Run(config *Config) (err error) {
 
 	var (
-		abs string
-		err error
+		repo    boil.Repository // loaded repository
+		meta    *boil.Metadata  // metadata of selected Template
+		metamap boil.Metamap    // metamap of the repository
+		execs   Executions      // list of template file executions
 	)
 
-	// Init config state.
-	if err = cfg.InitializeState(); err != nil {
-		return fmt.Errorf("init config state: %w", err)
+	// Config
+	if err = config.LoadOrCreate(); err != nil {
+		return
 	}
-
-	// Get absolute Template path.
-	if !strings.HasPrefix(cfg.TemplatePath, "/") {
-		cfg.TemplatePath = filepath.Join(cfg.State.Repository, cfg.TemplatePath)
+	// Repository
+	if repo, err = boil.OpenRepository(config.Config); err != nil {
+		return fmt.Errorf("open repository: %w", err)
 	}
-	if _, err = os.Stat(cfg.TemplatePath); err != nil {
+	// Metamap
+	if metamap, err = repo.LoadMetamap(); err != nil {
+		return fmt.Errorf("load metamap: %w", err)
+	}
+	_ = metamap
+	// Get absolute Template path and adjust it in config.
+	if !strings.HasPrefix(config.TemplatePath, "/") {
+		config.TemplatePath = filepath.Join(config.Runtime.LoadedRepository, config.TemplatePath)
+	}
+	if _, err = os.Stat(config.TemplatePath); err != nil {
 		return fmt.Errorf("template not found: %w", err)
 	}
-
-	// Parse target.
-	if abs, err = filepath.Abs(cfg.TargetDir); err != nil {
-		return fmt.Errorf("get absolute target path: %w", err)
-	}
-	cfg.TargetDir = abs
-
 	// Load metadata.
-	var meta *boil.Metadata
-	if meta, err = boil.LoadMetadataFromDir(cfg.TemplatePath); err != nil {
+	if meta, err = boil.LoadMetadataFromDir(config.TemplatePath); err != nil {
 		return err
 	}
-
+	// Get absolute target path and adjust it in config.
+	if config.TargetDir, err = filepath.Abs(config.TargetDir); err != nil {
+		return fmt.Errorf("get absolute target path: %w", err)
+	}
+	// Get a list of template file executions for this Template.
+	if execs, err = PrepareExecutions(config); err != nil {
+		return fmt.Errorf("prepare template files for execution: %w", err)
+	}
+	// Check for existing target files if no overwrite allowed.
+	if !config.Overwrite {
+		for _, exec := range execs {
+			if _, err = os.Stat(exec.Target); err != nil {
+				if !errors.Is(err, os.ErrNotExist) {
+					return fmt.Errorf("stat target file: %w", err)
+				}
+			} else {
+				return fmt.Errorf("target file already exists: %s", exec.Target)
+			}
+		}
+	}
 	// Get version.
 	var (
 		va      = strings.Split(strings.TrimPrefix(runtime.Version(), "go"), ".")
@@ -77,13 +118,13 @@ func Run(cfg *Config) error {
 
 	// Create data.
 	var data = map[string]string{
-		"ProjectName": filepath.Base(cfg.ModulePath),
-		"TargetDir":   cfg.TargetDir,
+		"ProjectName": filepath.Base(config.ModulePath),
+		"TargetDir":   config.TargetDir,
 		"GoVersion":   version,
-		"ModulePath":  cfg.ModulePath,
+		"ModulePath":  config.ModulePath,
 	}
-	if cfg.ProjectName != "" {
-		data["ProjectName"] = cfg.ProjectName
+	if config.ProjectName != "" {
+		data["ProjectName"] = config.ProjectName
 	}
 
 	var (
@@ -94,7 +135,7 @@ func Run(cfg *Config) error {
 	// Create target dir names.
 	for _, d := range meta.Directories {
 		var (
-			in  = filepath.Join(cfg.TemplatePath, d)
+			in  = filepath.Join(config.TemplatePath, d)
 			out string
 		)
 		if _, err := os.Stat(in); err != nil {
@@ -105,16 +146,16 @@ func Run(cfg *Config) error {
 			out = strings.ReplaceAll(out, "$"+k, v)
 		}
 		var found bool
-		if out, found = strings.CutPrefix(out, cfg.TemplatePath); !found {
+		if out, found = strings.CutPrefix(out, config.TemplatePath); !found {
 			return fmt.Errorf("invalid source dir path: %s", in)
 		}
-		dirs[in] = filepath.Join(cfg.TargetDir, out)
+		dirs[in] = filepath.Join(config.TargetDir, out)
 	}
 
 	// Create target file names.
 	for _, f := range meta.Files {
 		var (
-			in  = filepath.Join(cfg.TemplatePath, f)
+			in  = filepath.Join(config.TemplatePath, f)
 			out string
 		)
 		if _, err := os.Stat(in); err != nil {
@@ -125,17 +166,17 @@ func Run(cfg *Config) error {
 			out = strings.ReplaceAll(out, "$"+k, v)
 		}
 		var found bool
-		if out, found = strings.CutPrefix(out, cfg.TemplatePath); !found {
+		if out, found = strings.CutPrefix(out, config.TemplatePath); !found {
 			return fmt.Errorf("invalid source file path: %s", in)
 		}
-		files[in] = filepath.Join(cfg.TargetDir, out)
+		files[in] = filepath.Join(config.TargetDir, out)
 	}
 
 	// Print some debug.
-	if cfg.State.Verbose || cfg.NoExecute {
-		fmt.Printf("Source template path: %s\n", cfg.TemplatePath)
-		fmt.Printf("Target directory path: %s\n", cfg.TargetDir)
-		fmt.Printf("Module path: %s\n", cfg.ModulePath)
+	if config.Overrides.Verbose || config.NoExecute {
+		fmt.Printf("Source template path: %s\n", config.TemplatePath)
+		fmt.Printf("Target directory path: %s\n", config.TargetDir)
+		fmt.Printf("Module path: %s\n", config.ModulePath)
 
 		fmt.Printf("Target directories:\n")
 		for _, v := range dirs {
@@ -147,12 +188,12 @@ func Run(cfg *Config) error {
 		}
 		fmt.Printf("Variables:\n")
 		var keys []string
-		for k := range cfg.Vars {
+		for k := range config.UserVariables {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
-			fmt.Printf("%s=%s\n", k, cfg.Vars[k])
+			fmt.Printf("%s=%s\n", k, config.UserVariables[k])
 		}
 	}
 
@@ -162,7 +203,7 @@ func Run(cfg *Config) error {
 		Meta: meta,
 	}
 
-	if cfg.NoExecute {
+	if config.NoExecute {
 		fmt.Println("no-execute specified, no write operations will be executed.")
 		return nil
 	}
