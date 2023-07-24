@@ -36,8 +36,8 @@ func DefaultRepositoryDir() string {
 	return filepath.Join(DefaultConfigDir(), RepositoryDir)
 }
 
-// Config represents Boil configuration file.
-type Config struct {
+// Configuration represents Boil configuration file.
+type Configuration struct {
 	// Author is the default template author info.
 	DefaultAuthor *Author `json:"defaultAuthor,omitempty"`
 	// Repository is the absolute path to the default repository.
@@ -61,22 +61,18 @@ type Config struct {
 		// LoadedConfigFile is the name of the configuration file last loaded
 		// into self using self.LoadFromFile.
 		LoadedConfigFile string `json:"-"`
-
-		// LoadedRepository is the absolute path to the loaded repository.
-		// Value is empty if no repository was loaded.
-		LoadedRepository string `json:"-"`
 	} `json:"-"`
 }
 
 // DefaultConfig returns a config set to defaults or an error.
-func DefaultConfig() (config *Config, err error) {
+func DefaultConfig() (config *Configuration, err error) {
 
 	var usr *user.User
 	if usr, err = user.Current(); err != nil {
 		return nil, fmt.Errorf("get current user: %w", err)
 	}
 
-	return &Config{
+	return &Configuration{
 		DefaultAuthor: &Author{
 			Name: usr.Name,
 		},
@@ -85,7 +81,7 @@ func DefaultConfig() (config *Config, err error) {
 }
 
 // LoadFromFile loads self from filename or returns an error.
-func (self *Config) LoadFromFile(filename string) (err error) {
+func (self *Configuration) LoadFromFile(filename string) (err error) {
 	var buf []byte
 	if buf, err = ioutil.ReadFile(filename); err != nil {
 		return fmt.Errorf("read config file: %w", err)
@@ -101,7 +97,7 @@ func (self *Config) LoadFromFile(filename string) (err error) {
 // If Self.Overrides.ConfigFile is set, that path is used, otherwise the config
 // is loaded from the default config file. If the function fails it returns an
 // error.
-func (self *Config) LoadOrCreate() (err error) {
+func (self *Configuration) LoadOrCreate() (err error) {
 	var fn string
 	if fn = DefaultConfigFilename(); self.Overrides.ConfigFile != "" {
 		fn = self.Overrides.ConfigFile
@@ -119,7 +115,7 @@ func (self *Config) LoadOrCreate() (err error) {
 }
 
 // SaveToFile saves self to a file specified by filename or returns an error.
-func (self *Config) SaveToFile(filename string) (err error) {
+func (self *Configuration) SaveToFile(filename string) (err error) {
 	// Create configuration directory if not exists.
 	var dir = filepath.Dir(filename)
 	if _, err = os.Stat(dir); err != nil {

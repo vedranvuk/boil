@@ -1,0 +1,37 @@
+{
+	"name": "modularapp",
+	"description": "Modular Go application.",
+	"author": {
+		"name": "Vedran Vuk",
+		"email": "vedranvuk82@gmail.com",
+		"homepage": "http://goatse.cx"
+	},
+	"version": "1.0",
+	"url": "http://goatse.cx",
+	"email": "vedranvuk82@gmail.com",
+	"files": [
+		"docs/MANUAL.md",
+		"README.md"
+	],
+	"directories": [
+		"docs"
+	],
+	"multis": [
+		{
+			"name": "base",
+			"description": "Execute all segments as a single template.",
+			"Templates": [
+				"base"
+			]
+		},
+		{
+			"name": "complete",
+			"description": "Execute all segments as a single template.",
+			"Templates": [
+				"base",
+				"api",
+				"web"
+			]
+		}
+	]
+}

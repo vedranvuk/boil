@@ -37,14 +37,4 @@ func (self Vars) ReplaceAll(in string) (out string) {
 	return
 }
 
-// Command defines a command to execute, either pre or post template execution.
-type Command struct {
-	// Name is the Command name.
-	Name string
-	// Program path to executable.
-	Program string
-	// Program arguments.
-	// Placeholders in arguments are expended.
-	Arguments []string
-}
 

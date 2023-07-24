@@ -16,7 +16,7 @@ import (
 const version = "0.0.0"
 
 var (
-	programConfig *boil.Config
+	programConfig *boil.Configuration
 	cmdlineConfig *cmdline.Config
 	err           error
 )
@@ -96,16 +96,6 @@ func main() {
 						LongName:  "target-dir",
 						ShortName: "t",
 						Help:      "Target directory.",
-					},
-					&cmdline.Optional{
-						LongName:  "project-name",
-						ShortName: "n",
-						Help:      "Specify project name.",
-					},
-					&cmdline.Boolean{
-						LongName:  "no-create-dir",
-						ShortName: "d",
-						Help:      "Do not create a directory for te project, write directly to target-dir.",
 					},
 					&cmdline.Boolean{
 						LongName:  "no-execute",
@@ -191,13 +181,10 @@ func handleExec(c cmdline.Context) error {
 	}
 
 	return exec.Run(&exec.Config{
-		Config:        programConfig,
+		Configuration:        programConfig,
 		TemplatePath:  c.RawValues("template-path").First(),
-		ModulePath:    c.RawValues("module-path").First(),
 		TargetDir:     c.RawValues("target-dir").First(),
-		ProjectName:   c.RawValues("project-name").First(),
 		NoExecute:     c.IsParsed("no-execute"),
-		NoCreateDir:   c.IsParsed("no-create-dir"),
 		Overwrite:     c.IsParsed("overwrite"),
 		UserVariables: vars,
 	})

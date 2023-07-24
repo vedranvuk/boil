@@ -1,6 +1,7 @@
 package boil
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -20,6 +21,7 @@ type Repository interface {
 	// *Metadata value. All other keys will have a nil value.
 	//
 	// The format of keys is a path relative to repo root i.e. 'apps/cli'.
+	// The root directory is stored with a dot ".".
 	LoadMetamap() (Metamap, error)
 }
 
@@ -31,20 +33,22 @@ type Repository interface {
 //
 // Currently supported backends:
 // * local filesystem (DiskRepository)
-func OpenRepository(config *Config) (repo Repository, err error) {
+func OpenRepository(path string) (repo Repository, err error) {
 	// TODO: Detect repository path and return an appropriate implementaiton.
-	var fn string
-	if fn = config.Repository; config.Overrides.Repository != "" {
-		fn = config.Overrides.Repository
+	var fi os.FileInfo
+	if fi, err = os.Stat(path); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("repository directory does not exist: %s", path)
+		}
+		return nil, fmt.Errorf("stat repository: %w", err)
 	}
-	if fn, err = filepath.Abs(fn); err != nil {
-		return nil, fmt.Errorf("get absolute repo path: %w", err)
+	if !fi.IsDir() {
+		return nil, fmt.Errorf("repository path is not a directory: %s", path)
 	}
-	config.Runtime.LoadedRepository = fn
-	return NewDiskRepository(fn), nil
+	return NewDiskRepository(path), nil
 }
 
-// DiskRepository is a repository that works with an local fileystem.
+// DiskRepository is a repository that works with  local fileystem.
 type DiskRepository struct {
 	root string
 }
