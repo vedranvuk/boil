@@ -13,20 +13,23 @@ import (
 	"github.com/vedranvuk/cmdline"
 )
 
-const version = "0.0.0"
+// version is the boil version.
+const version = "0.0.0-alpha"
 
 var (
-	programConfig *boil.Configuration
-	cmdlineConfig *cmdline.Config
-	err           error
+	programConfig *boil.Configuration // boil configuration
+	cmdlineConfig *cmdline.Config     // command line configuration
+	err           error               // reusable error
 )
 
 func main() {
+
+	// Configuration defaults, later updated from file by the executed command.
 	if programConfig, err = boil.DefaultConfig(); err != nil {
 		fmt.Fprintf(os.Stderr, "init config: %s\n", err.Error())
 		os.Exit(1)
 	}
-
+	// Command line configuration.
 	cmdlineConfig = &cmdline.Config{
 		Arguments: os.Args[1:],
 		GlobalsHandler: func(c cmdline.Context) (err error) {
@@ -84,23 +87,47 @@ func main() {
 				},
 			},
 			{
-				Name:    "exec",
-				Help:    "Execute a template to a target directory.",
-				Handler: handleExec,
+				Name: "exec",
+				Help: "Execute a template to a target directory.",
+				Handler: func(c cmdline.Context) error {
+					// Create a map of UserVariables.
+					var vars = make(map[string]string)
+					for _, v := range c.RawValues("var") {
+						var a = strings.Split(v, "=")
+						if len(a) != 2 {
+							return errors.New("var must be in format key=value")
+						}
+						vars[a[0]] = a[1]
+					}
+					// Execute Exec Command.
+					return exec.Run(&exec.Config{
+						TemplatePath:  c.RawValues("template-path").First(),
+						TargetDir:     c.RawValues("target-dir").First(),
+						NoExecute:     c.IsParsed("no-execute"),
+						Overwrite:     c.IsParsed("overwrite"),
+						UserVariables: vars,
+						Configuration: programConfig,
+					})
+				},
 				Options: cmdline.Options{
 					&cmdline.Indexed{
 						Name: "template-path",
-						Help: "Path to a project template (local or remote).",
-					},
-					&cmdline.Optional{
-						LongName:  "target-dir",
-						ShortName: "t",
-						Help:      "Target directory.",
+						Help: "Template path.",
 					},
 					&cmdline.Boolean{
 						LongName:  "no-execute",
 						ShortName: "x",
 						Help:      "Do not execute commands.",
+					},
+					&cmdline.Boolean{
+						LongName:  "overwrite",
+						ShortName: "w",
+						Help:      "Overwrite any existing files in target directory.",
+					},
+					&cmdline.Optional{
+						LongName:  "target-dir",
+						ShortName: "t",
+						Help:      "Target directory.",
 					},
 					&cmdline.Optional{
 						LongName:  "module-path",
@@ -112,17 +139,17 @@ func main() {
 						ShortName: "r",
 						Help:      "Define a variale addressable from templates.",
 					},
-					&cmdline.Boolean{
-						LongName:  "overwrite",
-						ShortName: "w",
-						Help:      "Overwrite any existing files in target directory.",
-					},
 				},
 			},
 			{
-				Name:    "snap",
-				Help:    "Create a new template from a directory snapshot.",
-				Handler: handleSnap,
+				Name: "snap",
+				Help: "Create a new template from a directory snapshot.",
+				Handler: func(c cmdline.Context) error {
+					return snap.Run(&snap.Config{
+						ConfirmFiles: c.IsParsed("confirm-files"),
+						Force:        c.IsParsed("force"),
+					})
+				},
 				Options: cmdline.Options{
 					&cmdline.Boolean{
 						LongName:  "confirm-files",
@@ -137,9 +164,11 @@ func main() {
 				},
 			},
 			{
-				Name:    "list",
-				Help:    "List templates, optionally in a specific subdirectory.",
-				Handler: handleList,
+				Name: "list",
+				Help: "List templates, optionally in a specific subdirectory.",
+				Handler: func(c cmdline.Context) error {
+					return list.Run(&list.Config{})
+				},
 				Options: cmdline.Options{
 					&cmdline.Boolean{
 						LongName:  "recursive",
@@ -153,54 +182,20 @@ func main() {
 				},
 			},
 			{
-				Name:    "info",
-				Help:    "Show information about a template",
-				Handler: handleInfo,
+				Name: "info",
+				Help: "Show information about a template",
+				Handler: func(c cmdline.Context) error {
+					return list.Run(&list.Config{})
+				},
 			},
 		},
 	}
-
+	// Parse command line.
 	if err = cmdline.Parse(cmdlineConfig); err != nil {
 		if errors.Is(err, cmdline.ErrNoArgs) {
 			os.Exit(0)
 		}
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, fmt.Errorf("error: %w", err))
 		os.Exit(1)
 	}
-}
-
-func handleExec(c cmdline.Context) error {
-
-	var vars = make(map[string]string)
-	for _, v := range c.RawValues("var") {
-		var a = strings.Split(v, "=")
-		if len(a) != 2 {
-			return errors.New("var must be in format key=value")
-		}
-		vars[a[0]] = a[1]
-	}
-
-	return exec.Run(&exec.Config{
-		Configuration:        programConfig,
-		TemplatePath:  c.RawValues("template-path").First(),
-		TargetDir:     c.RawValues("target-dir").First(),
-		NoExecute:     c.IsParsed("no-execute"),
-		Overwrite:     c.IsParsed("overwrite"),
-		UserVariables: vars,
-	})
-}
-
-func handleSnap(c cmdline.Context) error {
-	return snap.Run(&snap.Config{
-		ConfirmFiles: c.IsParsed("confirm-files"),
-		Force:        c.IsParsed("force"),
-	})
-}
-
-func handleList(c cmdline.Context) error {
-	return list.Run(&list.Config{})
-}
-
-func handleInfo(c cmdline.Context) error {
-	return list.Run(&list.Config{})
 }

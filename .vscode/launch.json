@@ -13,7 +13,7 @@
 			"args": [
 				"--config=${workspaceFolder}/cmd/boil/config.json",
 				"--repository=${workspaceFolder}/_testdata/templates"
-			]
+			],
 		},
 		{
 			"name": "boil help",
@@ -45,10 +45,8 @@
 			"args": [
 				"-v",
 				"exec",
-				"--project-name=test_project",
 				"goapp",
-				"github.com/vedranvuk/test_project",
-				"${workspaceFolder}/_testdata/output/goapp",
+				"--target-dir=${workspaceFolder}/_testdata/output/goapp",
 				"--var=a=1",
 				"--var=b=2",
 				"--var=c=3"

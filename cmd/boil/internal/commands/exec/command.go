@@ -68,12 +68,18 @@ func Run(config *Config) (err error) {
 	if err = config.Configuration.LoadOrCreate(); err != nil {
 		return
 	}
+	if config.Configuration.Overrides.Verbose {
+		fmt.Printf("Using configuration file: %s\n", config.Configuration.Runtime.LoadedConfigFile)
+	}
 	// Repository
 	if strings.HasPrefix(config.TemplatePath, string(os.PathSeparator)) {
 		// Absolute template path, open Template as Repository.
 		config.repository, err = boil.OpenRepository(config.TemplatePath)
 		config.absRepositoryPath = config.TemplatePath
 		config.TemplatePath = ""
+		if config.Configuration.Overrides.Verbose {
+			fmt.Printf("Absolute template path specified, not using a repository.\n")
+		}
 	} else {
 		var path string
 		if path = config.Configuration.Repository; config.Configuration.Overrides.Repository != "" {
@@ -84,6 +90,9 @@ func Run(config *Config) (err error) {
 		}
 		config.absRepositoryPath = path
 		config.repository, err = boil.OpenRepository(path)
+		if config.Configuration.Overrides.Verbose {
+			fmt.Printf("Using repository: %s\n", config.absRepositoryPath)
+		}
 	}
 	if err != nil {
 		return fmt.Errorf("open repository: %w", err)

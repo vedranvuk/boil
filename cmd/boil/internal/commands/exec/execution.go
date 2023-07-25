@@ -26,26 +26,6 @@ type Execution struct {
 	IsDir bool
 }
 
-// Data is the top level data structure passed to a Template file.
-type Data struct {
-	// Vars is a collection of system variables always present on template
-	// execution, generated from environment.
-	Vars map[string]string
-	// UserVars is a collection of variables given by the user during execution.
-	UserVars map[string]string
-}
-
-// ReplaceAll replaces all known variable placeholders in input string with
-// actual values and returns it.
-func (self *Data) ReplaceAll(in string) (out string) {
-	// "ProjectName": filepath.Base(config.ModulePath),
-	// "TargetDir":   config.TargetDir,
-	// "GoVersion":   version,
-	// "ModulePath":  config.ModulePath,
-
-	return in
-}
-
 // Execute executes a FileCopy operation or returns an error.
 func (self *Execution) Execute(data interface{}) error {
 
@@ -162,7 +142,7 @@ func PrepareExecutions(config *Config) (execs TemplateExecutions, err error) {
 }
 
 func getTemplateExecutions(config *Config, path string, execs TemplateExecutions) (err error) {
-	var meta *boil.Metadata
+	var meta *boil.Metafile
 	if meta, err = config.metamap.Metadata(path); err != nil {
 		return fmt.Errorf("load template: '%w'", err)
 	}
@@ -172,7 +152,7 @@ func getTemplateExecutions(config *Config, path string, execs TemplateExecutions
 	// Create target dir names.
 	for _, d := range meta.Directories {
 		var (
-			in  = filepath.Join(config.absRepositoryPath, d)
+			in  = d
 			out string
 		)
 		if _, err := fs.Stat(config.repository, in); err != nil {
@@ -192,7 +172,7 @@ func getTemplateExecutions(config *Config, path string, execs TemplateExecutions
 	// Create target file names.
 	for _, f := range meta.Files {
 		var (
-			in  = filepath.Join(config.absRepositoryPath, f)
+			in  = f
 			out string
 		)
 		if _, err := os.Stat(in); err != nil {
@@ -210,7 +190,7 @@ func getTemplateExecutions(config *Config, path string, execs TemplateExecutions
 		})
 	}
 	// Create executions for multi.
-	for _, m := range meta.Multis {
+	for _, m := range meta.Groups {
 		for _, t := range m.Templates {
 			if err = getTemplateExecutions(config, filepath.Join(path, t), execs); err != nil {
 				return

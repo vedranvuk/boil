@@ -1,1 +1,0 @@
-# {{.Vars.AppName}} Readme

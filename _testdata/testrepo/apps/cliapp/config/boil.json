@@ -1,0 +1,14 @@
+{
+	"name": "config",
+	"description": "Configuration component of modular command line application template.",
+	"author": {
+		"name": "Vedran Vuk",
+		"email": "vedranvuk82@gmail.com",
+		"homepage": "http://example.com"
+	},
+	"version": "1.0.0",
+	"url": "http://example.com",
+	"files": [
+		"cmd/$ProjectName/config.go"
+	]
+}

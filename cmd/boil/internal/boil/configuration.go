@@ -45,6 +45,9 @@ type Configuration struct {
 
 	// Overrides are the configuration overrides specified on command line.
 	// They exist at runtime only and are not serialized with Config.
+	// They are set by Command Run functions.
+	//
+	// Each Command uses these values during setup.
 	Overrides struct {
 		// ConfigFile is the absolute path of loaded config file.
 		ConfigFile string
@@ -57,6 +60,8 @@ type Configuration struct {
 	} `json:"-"`
 
 	// Runtime holds the runtime variables.
+	// They are set by Command Run functions.
+	// They exist at runtime only and are not serialized with Config.
 	Runtime struct {
 		// LoadedConfigFile is the name of the configuration file last loaded
 		// into self using self.LoadFromFile.
@@ -97,6 +102,8 @@ func (self *Configuration) LoadFromFile(filename string) (err error) {
 // If Self.Overrides.ConfigFile is set, that path is used, otherwise the config
 // is loaded from the default config file. If the function fails it returns an
 // error.
+//
+// TODO: Try loading first from program directory on Windows.
 func (self *Configuration) LoadOrCreate() (err error) {
 	var fn string
 	if fn = DefaultConfigFilename(); self.Overrides.ConfigFile != "" {

@@ -1,0 +1,40 @@
+{
+	"name": "app",
+	"description": "A basic go command application template.",
+	"author": {
+		"name": "Vedran Vuk",
+		"email": "vedranvuk82@gmail.com",
+		"homepage": "http://example.com"
+	},
+	"version": "1.0.0",
+	"url": "http://example.com",
+	"files": [
+		"cmd/$ProjectName/config.go"
+	],
+	"prompts": [
+		{
+			"variable": "ProjectName",
+			"prompt": "Project name",
+			"regExp": ".+"
+		},
+		{
+			"variable": "ModulePath",
+			"prompt": "Project Module Path",
+			"regExp": ".+"
+		}
+	],
+	"actions": {
+		"postExecute": [
+			{
+				"description": "Initialize go.mod file.",
+				"program": "go",
+				"arguments": [
+					"mod",
+					"init",
+					"$ModulePath"
+				],
+				"workDir": "$OutputDirectory"
+			}
+		]
+	}
+}

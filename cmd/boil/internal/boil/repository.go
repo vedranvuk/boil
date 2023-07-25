@@ -8,31 +8,35 @@ import (
 	"path/filepath"
 )
 
-// Repository is an interface to a repository backend.
+// Repository defines a location where Templates are stored.
+//
+// Templates inside a Repository are addressed by a path relative to the
+// Repository root, i.e. 'apps/cliapp'.
 type Repository interface {
 	// FS wraps the Open method to open a file from a repository.
 	fs.FS
-	// LoadMetamap loads metadata from repository recursively and returns it
-	// or returns a descriptive error if one occured.
+
+	// LoadMetamap loads metadata from root directory recursively recursively
+	// walking all child subdirectories and returns it or returns a descriptive
+	// error if one occurs.
 	//
-	// The resulting Metamap will contain a key for each subdirectory
-	// recursively found in the repository. Only keys of paths to directories
-	// containing a Metafile, i.e. Template directories will have a valid
-	// *Metadata value. All other keys will have a nil value.
+	// The resulting Metamap will contain a *Metadata for each subdirectory at
+	// any level in the Repository that contains a Metafile, i.e. defines a
+	// Template, under a key that will be a path relative to Repository.
 	//
-	// The format of keys is a path relative to repo root i.e. 'apps/cli'.
-	// The root directory is stored with a dot ".".
+	// If the root of the Repository contains Metafile i.e. is a Template
+	// itself an entry for it will be set under an empty key - not the standard
+	//  current directory dot ".".
 	LoadMetamap() (Metamap, error)
 }
 
-// OpenRepository returns an implementation of a repository depending on
-// repository path from the config, respecting overrides. It sets
-// config.Runtime.LoadedRepository to an absolute path of the opened repository.
-//
-// If an error occurs it is returned with a nil repository.
+// OpenRepository returns an implementation of a Repository depending on
+// repository path format.
 //
 // Currently supported backends:
 // * local filesystem (DiskRepository)
+//
+// If an error occurs it is returned with a nil repository.
 func OpenRepository(path string) (repo Repository, err error) {
 	// TODO: Detect repository path and return an appropriate implementaiton.
 	var fi os.FileInfo
@@ -48,7 +52,9 @@ func OpenRepository(path string) (repo Repository, err error) {
 	return NewDiskRepository(path), nil
 }
 
-// DiskRepository is a repository that works with  local fileystem.
+// DiskRepository is a repository that works with a local fileystem.
+// It is initialized from an absolute filesystem path or a path relative to the
+// current working directory.
 type DiskRepository struct {
 	root string
 }
@@ -65,5 +71,5 @@ func (self DiskRepository) Open(name string) (fs.File, error) {
 
 // LoadMetamap implements Repository.LoadMetamap.
 func (self DiskRepository) LoadMetamap() (m Metamap, err error) {
-	return LoadMetamap(self.root)
+	return MetamapFromDir(self.root)
 }

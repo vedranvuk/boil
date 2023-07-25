@@ -1,0 +1,63 @@
+{
+	"name": "cliapp",
+	"description": "Modular command line application template.",
+	"author": {
+		"name": "Vedran Vuk",
+		"email": "vedranvuk82@gmail.com",
+		"homepage": "http://example.com"
+	},
+	"version": "1.0.0",
+	"url": "http://example.com",
+	"files": [
+		"cmd/$ProjectName/main.go",
+		"README.md"
+	],
+	"directories": [
+		"docs"
+	],
+	"groups": [
+		{
+			"name": "config",
+			"description": "Configuration component.",
+			"templates": [
+				"config"
+			]
+		},
+		{
+			"name": "logging",
+			"description": "Logging component.",
+			"templates": [
+				"logging"
+			]
+		},
+		{
+			"name": "all",
+			"description": "All components.",
+			"templates": [
+				"config",
+				"logging"
+			]
+		}
+	],
+	"actions": {
+		"postExecute": [
+			{
+				"description": "Initialize go.mod file.",
+				"program": "go",
+				"arguments": [
+					"mod",
+					"init",
+					"$ModulePath"
+				],
+				"workDir": "$OutputDirectory"
+			}
+		]
+	},
+	"prompts": [
+		{
+			"variable": "ModulePath",
+			"prompt": "Project Module Path",
+			"regExp": ".+"
+		}
+	]
+}
