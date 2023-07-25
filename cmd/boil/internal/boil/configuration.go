@@ -41,7 +41,25 @@ type Configuration struct {
 	// Author is the default template author info.
 	DefaultAuthor *Author `json:"defaultAuthor,omitempty"`
 	// Repository is the absolute path to the default repository.
-	Repository string `json:"repository,omitempty"`
+	Repository string `json:"repository"`
+
+	// DisableBackup, if true disables output directory backup before
+	// Template execution.
+	//
+	// If backup is disabled, if errors occur during template execution
+	// the output directory might contain an incomplete and invalid output.
+	DisableBackup bool `json:"disableBackup"`
+
+	// Editor defines the action to execute for the "edit" command.
+	// If no editor is defined Boil opens the Template directory in the default
+	// system file explorer.
+	Editor struct {
+		// Program is the path to the editor executable.
+		Program string `json:"program,omitempty"`
+		// Arguments is a slice of arguments to pass to the Program.
+		// A subset of variable placeholders is supported (TODO).
+		Arguments []string `json:"arguments,omitempty"`
+	} `json:"editor,omitempty"`
 
 	// Overrides are the configuration overrides specified on command line.
 	// They exist at runtime only and are not serialized with Config.
@@ -55,6 +73,8 @@ type Configuration struct {
 		Repository string
 		// Prompt for missing required Options via stdin.
 		Prompt bool
+		// DisableBackup overrides the Configuration.DisableBackup.
+		DisableBackup bool
 		// Verbose specifies wether to enable verbose output.
 		Verbose bool
 	} `json:"-"`
@@ -65,7 +85,7 @@ type Configuration struct {
 	Runtime struct {
 		// LoadedConfigFile is the name of the configuration file last loaded
 		// into self using self.LoadFromFile.
-		LoadedConfigFile string `json:"-"`
+		LoadedConfigFile string
 	} `json:"-"`
 }
 
@@ -76,13 +96,19 @@ func DefaultConfig() (config *Configuration, err error) {
 	if usr, err = user.Current(); err != nil {
 		return nil, fmt.Errorf("get current user: %w", err)
 	}
+	var name string
+	if name = usr.Name; name == "" {
+		name = usr.Username
+	}
 
-	return &Configuration{
-		DefaultAuthor: &Author{
-			Name: usr.Name,
-		},
-		Repository: DefaultRepositoryDir(),
-	}, nil
+	config = new(Configuration)
+	config.DefaultAuthor = &Author{
+		Name: name,
+	}
+	config.Repository = DefaultRepositoryDir()
+	config.Editor.Program = "code"
+	config.Editor.Arguments = []string{"$TemplateDirectory"}
+	return
 }
 
 // LoadFromFile loads self from filename or returns an error.
@@ -144,11 +170,19 @@ func (self *Configuration) SaveToFile(filename string) (err error) {
 	}
 	// Marshal and save config.
 	var buf []byte
-	if buf, err = json.Marshal(self); err != nil {
+	if buf, err = json.MarshalIndent(self, "", "\t"); err != nil {
 		return fmt.Errorf("marshal config: %w", err)
 	}
 	if err = ioutil.WriteFile(filename, buf, os.ModePerm); err != nil {
 		return fmt.Errorf("write config file: %w", err)
 	}
 	return nil
+}
+
+// ShouldBackup returns true if self says that a backups should be performed.
+func (self *Configuration) ShouldBackup() (should bool) {
+	if should = !self.Overrides.DisableBackup; !should {
+		should = !self.DisableBackup
+	}
+	return
 }

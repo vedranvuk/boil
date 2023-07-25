@@ -26,17 +26,6 @@
 			]
 		},
 		{
-			"name": "boil help -l",
-			"type": "go",
-			"request": "launch",
-			"mode": "auto",
-			"program": "${workspaceFolder}/cmd/boil",
-			"args": [
-				"help",
-				"-l"
-			]
-		},
-		{
 			"name": "boil exec",
 			"type": "go",
 			"request": "launch",
@@ -45,8 +34,9 @@
 			"args": [
 				"-v",
 				"exec",
-				"goapp",
-				"--target-dir=${workspaceFolder}/_testdata/output/goapp",
+				"-w",
+				"apps/cliapp:all",
+				"--target-dir=${workspaceFolder}/_testdata/output/cliapp",
 				"--var=a=1",
 				"--var=b=2",
 				"--var=c=3"

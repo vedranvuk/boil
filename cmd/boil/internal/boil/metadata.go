@@ -64,7 +64,7 @@ type Metafile struct {
 	// Directories is a list of directories to create in the target directory.
 	// Placeholders are supported like with Files. Directories defined in this
 	// list will be created regardless of wether they contain any of the
-	// files defined by Files or if they exist phisically in the Template 
+	// files defined by Files or if they exist phisically in the Template
 	// directory. They will be created in the template however when creating a
 	// Template with the "snap" command.
 	Directories []string `json:"directories,omitempty"`
@@ -211,61 +211,65 @@ func LoadMetadataFromDir(dir string) (metadata *Metafile, err error) {
 // Validate validates that metadata is properly formatted.
 // It checks that multis point to valid Templates in the repo.
 // It checks for duplicate template definitions.
-// It checks for
-func (self Metafile) Validate(repo Repository) error {
+func (self Metafile) Validate(config *Configuration) error {
 	return nil
 }
 
 // Metamap maps a Template path to its Metadata.
 type Metamap map[string]*Metafile
 
-// MetamapFromDir loads metadata from root directory recursively recursively
-// walking all child subdirectories and returns it or returns a descriptive
-// error if one occurs.
+// MetamapFromDir loads metadata from root directory recursively walking all
+// child subdirectories and returns it or returns a descriptive error if one
+// occurs.
 //
 // The resulting Metamap will contain a *Metadata for each subdirectory at any
 // level in the root directory that contains a Metafile, i.e. defines a
 // Template, under a key that will be a path relative to specified root.
 //
+// The resulting Metamap will also contain aliases for each Group defined in a
+// Metafile where the last element of the path will be the name of the group
+// instead of the Template that defines the group and will carry a pointer to
+// the same Metadata as the parent Template.
+//
 // If root contains metadata i.e. is a Template itself an entry for it will
 // be set under an empty key - not the standard current directory dot ".".
 func MetamapFromDir(root string) (metamap Metamap, err error) {
-	var metadata *Metafile
 	metamap = make(Metamap)
+	var metadata *Metafile
 	err = filepath.Walk(root, func(path string, info fs.FileInfo, err error) error {
 		if !info.IsDir() {
 			return nil
 		}
-		// Add keys for Templates.
-		metadata = nil
+		if err != nil {
+			return fmt.Errorf("walk error: %w", err)
+		}
 		if metadata, err = LoadMetadataFromDir(path); err != nil {
 			if !errors.Is(err, errNoMetadata) {
 				return fmt.Errorf("load metamap: %w", err)
 			}
 		}
+		if metadata == nil {
+			return nil
+		}
 		var s = strings.TrimPrefix(strings.TrimPrefix(path, root), string(os.PathSeparator))
 		metamap[s] = metadata
-		// Add keys for Multis.
-		if metadata != nil {
-			var base = filepath.Dir(s)
-			if base == "." {
-				base = ""
-			}
-			if metadata.Groups != nil {
-				for _, multi := range metadata.Groups {
-					s = filepath.Join(base, multi.Name)
-					metamap[s] = metadata
-				}
-			}
+		if metadata.Groups == nil {
+			return nil
+		}
+		for _, multi := range metadata.Groups {
+			metamap[fmt.Sprintf("%s:%s", s, multi.Name)] = metadata
 		}
 		return nil
 	})
+	if err != nil {
+		err = fmt.Errorf("metamapfromdir: %w", err)
+	}
 	return
 }
 
-// Metadata returns metadata for a path. If the path is invalid or no metadata
+// Metafile returns metadata for a path. If the path is invalid or no metadata
 // for path exists an error is returned.
-func (self Metamap) Metadata(path string) (*Metafile, error) {
+func (self Metamap) Metafile(path string) (*Metafile, error) {
 	if strings.HasPrefix(path, string(os.PathSeparator)) {
 		return nil, fmt.Errorf("metadata: invalid path: '%s'", path)
 	}
@@ -274,16 +278,4 @@ func (self Metamap) Metadata(path string) (*Metafile, error) {
 		return nil, fmt.Errorf("no metadata for path '%s'", path)
 	}
 	return meta, nil
-}
-
-// WithMetadata returns a subset of self with only the keys that have
-// a non-nil metadata.
-func (self Metamap) WithMetadata() (m Metamap) {
-	m = make(Metamap)
-	for k, v := range self {
-		if v != nil {
-			m[k] = v
-		}
-	}
-	return
 }

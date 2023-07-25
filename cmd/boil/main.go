@@ -32,12 +32,6 @@ func main() {
 	// Command line configuration.
 	cmdlineConfig = &cmdline.Config{
 		Arguments: os.Args[1:],
-		GlobalsHandler: func(c cmdline.Context) (err error) {
-			if c.IsParsed("help") {
-				return handleHelp(c)
-			}
-			return nil
-		},
 		Globals: cmdline.Options{
 			&cmdline.Boolean{
 				LongName:  "help",
@@ -68,7 +62,29 @@ func main() {
 				Help:        "Override directory of repository to use.",
 				MappedValue: &programConfig.Overrides.Repository,
 			},
+			&cmdline.Boolean{
+				LongName: "version",
+				Help:     "Show program version and exit.",
+			},
 		},
+		GlobalExclusivityGroups: []cmdline.ExclusivityGroup{
+			{
+				"verbose",
+				"version",
+				"help",
+			},
+		},
+		GlobalsHandler: func(c cmdline.Context) (err error) {
+			if c.IsParsed("help") {
+				return handleHelp(c)
+			}
+			if c.IsParsed("version") {
+				fmt.Printf("boil v%s\n", version)
+				os.Exit(0)
+			}
+			return nil
+		},
+
 		Commands: cmdline.Commands{
 			{
 				Name:    "help",
@@ -83,6 +99,71 @@ func main() {
 					&cmdline.Variadic{
 						Name: "topic",
 						Help: "Help topic to display.",
+					},
+				},
+			},
+			{
+				Name: "list",
+				Help: "List templates, optionally starting from specific subdirectory.",
+				Handler: func(c cmdline.Context) error {
+					return list.Run(&list.Config{})
+				},
+				Options: cmdline.Options{
+					&cmdline.Boolean{
+						LongName:  "recursive",
+						ShortName: "r",
+						Help:      "List templates recursively.",
+					},
+					&cmdline.Variadic{
+						Name: "path",
+						Help: "Template subdirectory path to list.",
+					},
+				},
+			},
+			{
+				Name: "snap",
+				Help: "Create a new template from a source directory or file.",
+				Handler: func(c cmdline.Context) error {
+					return snap.Run(&snap.Config{
+						ConfirmFiles: c.IsParsed("confirm-files"),
+						Force:        c.IsParsed("force"),
+					})
+				},
+				Options: cmdline.Options{
+					&cmdline.Boolean{
+						LongName:  "overwrite",
+						ShortName: "w",
+						Help:      "Overwrite Template if it already exists without prompting.",
+					},
+					&cmdline.Boolean{
+						LongName:  "confirm-files",
+						ShortName: "c",
+						Help:      "Prompt for each file if it should be included in the template.",
+					},
+					&cmdline.Boolean{
+						LongName:  "wizard",
+						ShortName: "z",
+						Help:      "Define additional Template properties using a wizard.",
+					},
+				},
+			},
+			{
+				Name: "info",
+				Help: "Show information about a template",
+				Handler: func(c cmdline.Context) error {
+					return list.Run(&list.Config{})
+				},
+			},
+			{
+				Name: "edit",
+				Help: "Edit a template using the default editor.",
+				Handler: func(c cmdline.Context) error {
+					return nil
+				},
+				Options: cmdline.Options{
+					&cmdline.Indexed{
+						Name: "template-path",
+						Help: "Path f the Template to be edited.",
 					},
 				},
 			},
@@ -112,17 +193,17 @@ func main() {
 				Options: cmdline.Options{
 					&cmdline.Indexed{
 						Name: "template-path",
-						Help: "Template path.",
+						Help: "Path of the Template to be executed.",
+					},
+					&cmdline.Boolean{
+						LongName:  "overwrite",
+						ShortName: "w",
+						Help:      "Overwrite any existing output files without prompting.",
 					},
 					&cmdline.Boolean{
 						LongName:  "no-execute",
 						ShortName: "x",
 						Help:      "Do not execute commands.",
-					},
-					&cmdline.Boolean{
-						LongName:  "overwrite",
-						ShortName: "w",
-						Help:      "Overwrite any existing files in target directory.",
 					},
 					&cmdline.Optional{
 						LongName:  "target-dir",
@@ -139,53 +220,6 @@ func main() {
 						ShortName: "r",
 						Help:      "Define a variale addressable from templates.",
 					},
-				},
-			},
-			{
-				Name: "snap",
-				Help: "Create a new template from a directory snapshot.",
-				Handler: func(c cmdline.Context) error {
-					return snap.Run(&snap.Config{
-						ConfirmFiles: c.IsParsed("confirm-files"),
-						Force:        c.IsParsed("force"),
-					})
-				},
-				Options: cmdline.Options{
-					&cmdline.Boolean{
-						LongName:  "confirm-files",
-						ShortName: "c",
-						Help:      "Prompt for each file if it should be included in the template.",
-					},
-					&cmdline.Boolean{
-						LongName:  "force",
-						ShortName: "f",
-						Help:      "Force overwriting template if it already exists.",
-					},
-				},
-			},
-			{
-				Name: "list",
-				Help: "List templates, optionally in a specific subdirectory.",
-				Handler: func(c cmdline.Context) error {
-					return list.Run(&list.Config{})
-				},
-				Options: cmdline.Options{
-					&cmdline.Boolean{
-						LongName:  "recursive",
-						ShortName: "r",
-						Help:      "List templates recursively.",
-					},
-					&cmdline.Variadic{
-						Name: "path",
-						Help: "Template subdirectory path to list.",
-					},
-				},
-			},
-			{
-				Name: "info",
-				Help: "Show information about a template",
-				Handler: func(c cmdline.Context) error {
-					return list.Run(&list.Config{})
 				},
 			},
 		},

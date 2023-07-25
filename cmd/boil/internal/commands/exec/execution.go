@@ -1,9 +1,9 @@
 package exec
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,9 +14,9 @@ import (
 
 // Execution defines an execution of a single template file.
 type Execution struct {
-	// Source is the absolute path of the source file which is to be executed
-	// onto Target path.
-	// The path may be contain placeholder values.
+	// Source is path of the source Template file relative to the
+	// repository root to be executed. Placeholders in the Source path will be
+	// expanded when determining absolute Target path.
 	Source string
 	// Target is the absolute path of the target file which will contain Source
 	// template output. If the source path had placeholder values they will be
@@ -26,177 +26,163 @@ type Execution struct {
 	IsDir bool
 }
 
-// Execute executes a FileCopy operation or returns an error.
-func (self *Execution) Execute(data interface{}) error {
-
-	var (
-		err  error
-		buf  []byte
-		tmpl *template.Template
-		file *os.File
-	)
-
-	if buf, err = ioutil.ReadFile(self.Source); err != nil {
-		return fmt.Errorf("read source template '%s': %w", self.Source, err)
-	}
-
-	if tmpl, err = template.New(filepath.Base(self.Source)).Parse(string(buf)); err != nil {
-		return fmt.Errorf("parse source template '%s': %w", self.Source, err)
-	}
-
-	if file, err = os.Create(self.Target); err != nil {
-		return fmt.Errorf("create target file '%s': %w", self.Target, err)
-	}
-	defer file.Close()
-
-	if err = tmpl.Execute(file, data); err != nil {
-		return fmt.Errorf("execute template '%s' to '%s': %w", self.Source, self.Target, err)
-	}
-
-	return nil
-}
-
-// TemplateExecution defines a list of executions for a Template.
-type TemplateExecution struct {
+// Executions defines a list of executions for a Template.
+type ExecutionList struct {
 	TemplateName string
-	Executions
+	Metafile     *boil.Metafile
+	List         []*Execution
 }
 
-type TemplateExecutions []*TemplateExecution
+// Executions is a list of ExecutionLists.
+type Executions []*ExecutionList
 
 // Execute executes all defined executions or returns an error.
-func (self TemplateExecutions) Execute(config *Config) error {
+func (self Executions) Execute(config *Config) (err error) {
 
-	if config.NoExecute {
-		fmt.Println("no-execute specified, no write operations will be executed.")
-		return nil
+	if config.Configuration.ShouldBackup() {
+		var id string
+		if id, err = boil.CreateBackup(config.Configuration, config.TargetDir); err != nil {
+			return fmt.Errorf("create target dir backup: %w", err)
+		}
+		defer func() {
+			if err != nil {
+				if e := boil.RestoreBackup(id); e != nil {
+					err = fmt.Errorf("restore backup failed after error '%w': %w", err, e)
+				}
+			}
+		}()
 	}
 
-	// No-Execute.
 	for _, exec := range self {
 
-		// Print instead of executing.
-		if config.NoExecute {
-			fmt.Printf("Listing write operations for template '%s':\n", exec.TemplateName)
-			for _, e := range exec.Executions {
-				fmt.Printf("Execute '%s' to '%s' (directory: %t)\n", e.Source, e.Target, e.IsDir)
-			}
-			fmt.Println()
-			return nil
-		}
-
-		// TODO: Backup target dir and restore on error.
-
 		// Create dirs.
-		for _, e := range exec.Executions {
-			if !e.IsDir {
+		for _, item := range exec.List {
+			if !item.IsDir {
 				continue
 			}
-			if err := os.MkdirAll(e.Target, os.ModePerm); err != nil {
-				return fmt.Errorf("error creating target directory %s: %w", e.Target, err)
+			if err = os.MkdirAll(item.Target, os.ModePerm); err != nil {
+				return fmt.Errorf("error creating target directory %s: %w", item.Target, err)
 			}
 		}
 
 		// Execute source templates.
-		for _, e := range exec.Executions {
-			if e.IsDir {
+		for _, item := range exec.List {
+			if item.IsDir {
 				continue
 			}
 			var (
-				err  error
 				buf  []byte
 				tmpl *template.Template
 				file *os.File
-				src  = e.Source
-				tgt  = e.Target
 			)
-			if buf, err = ioutil.ReadFile(src); err != nil {
-				return fmt.Errorf("error reading source dir %s: %w", src, err)
+			if buf, err = fs.ReadFile(config.repository, item.Source); err != nil {
+				return fmt.Errorf("read template file '%s': %w", item.Source, err)
 			}
-			if tmpl, err = template.New(filepath.Base(src)).Parse(string(buf)); err != nil {
-				return fmt.Errorf("error parsing source template %s: %w", src, err)
+			if tmpl, err = template.New(filepath.Base(item.Source)).Parse(string(buf)); err != nil {
+				return fmt.Errorf("parse template file '%s': %w", item.Source, err)
 			}
-			if file, err = os.Create(tgt); err != nil {
-				return fmt.Errorf("error creating target file %s: %w", tgt, err)
+			if err = os.MkdirAll(filepath.Dir(item.Target), os.ModePerm); err != nil {
+				return fmt.Errorf("create target file dir '%s': %w", filepath.Dir(item.Target), err)
+			}
+			if file, err = os.Create(item.Target); err != nil {
+				return fmt.Errorf("create target file '%s': %w", item.Target, err)
 			}
 			defer file.Close()
 			if err = tmpl.Execute(file, config.data); err != nil {
-				return fmt.Errorf("error executing template %s: %w", tgt, err)
+				return fmt.Errorf("execute template '%s' into target '%s': %w", item.Source, item.Target, err)
 			}
 		}
 	}
 	return nil
 }
 
-// Executions is a list of executions needed to execute a Boil template.
-type Executions []*Execution
+// CheckForTargetConflicts returns nil if none of the Target paths of all
+// defined Executions in self do not point to an existing file. Otherwise a
+// descriptive error is returned.
+func (self Executions) CheckForTargetConflicts() (err error) {
+	for _, execGroup := range self {
+		for _, exec := range execGroup.List {
+			if _, err = os.Stat(exec.Target); err != nil {
+				if !errors.Is(err, os.ErrNotExist) {
+					return fmt.Errorf("stat target file: %w", err)
+				}
+			} else {
+				return fmt.Errorf("target file already exists: %s", exec.Target)
+			}
+		}
+	}
+	return nil
+}
 
 // PrepareExecutions prepares a list of executions from an Exec Config
 // or returns an error if one occurs.
 // It will return an error if:
 // Multi with missing templates.
 // Missing files or dirs.
-func PrepareExecutions(config *Config) (execs TemplateExecutions, err error) {
-	err = getTemplateExecutions(config, config.TemplatePath, execs)
+func PrepareExecutions(config *Config) (execs Executions, err error) {
+	if err = getTemplateExecutions(config, config.TemplatePath, &execs); err == nil {
+		if err = validateExecutions(config, execs); err != nil {
+			err = fmt.Errorf("executions validation failed: %w", err)
+		}
+	}
 	return
 }
 
-func getTemplateExecutions(config *Config, path string, execs TemplateExecutions) (err error) {
+// getTemplateExecutions uses config to recursively construct execs starting
+// from path. if the function failes it returns an error.
+func getTemplateExecutions(config *Config, path string, execs *Executions) (err error) {
 	var meta *boil.Metafile
-	if meta, err = config.metamap.Metadata(path); err != nil {
+	var a = strings.Split(path, ":")
+	if l := len(a); l < 1 || l > 2 {
+		return fmt.Errorf("invalid template path '%s'", path)
+	}
+	path = a[0]
+	if meta, err = config.metamap.Metafile(path); err != nil {
 		return fmt.Errorf("load template: '%w'", err)
 	}
-	var texec = &TemplateExecution{
+	var list = &ExecutionList{
 		TemplateName: meta.Name,
+		Metafile:     meta,
 	}
-	// Create target dir names.
-	for _, d := range meta.Directories {
-		var (
-			in  = d
-			out string
-		)
-		if _, err := fs.Stat(config.repository, in); err != nil {
-			return fmt.Errorf("stat error on template directory %s: %w", in, err)
-		}
-		out = config.data.ReplaceAll(in)
-		var found bool
-		if out, found = strings.CutPrefix(out, config.absRepositoryPath); !found {
-			return fmt.Errorf("invalid source dir path: %s", in)
-		}
-		texec.Executions = append(texec.Executions, &Execution{
-			Source: in,
-			Target: filepath.Join(config.TargetDir, out),
+	for _, dir := range meta.Directories {
+		list.List = append(list.List, &Execution{
+			Source: filepath.Join(path, dir),
+			Target: filepath.Join(config.TargetDir, config.data.ReplaceAll(dir)),
 			IsDir:  true,
 		})
 	}
-	// Create target file names.
-	for _, f := range meta.Files {
-		var (
-			in  = f
-			out string
-		)
-		if _, err := os.Stat(in); err != nil {
-			return fmt.Errorf("stat error on template file %s: %w", in, err)
+	for _, file := range meta.Files {
+		if _, err := fs.Stat(config.repository, filepath.Join(path, file)); err != nil {
+			return fmt.Errorf("template file '%s' stat error: %w", file, err)
 		}
-		out = config.data.ReplaceAll(in)
-		var found bool
-		if out, found = strings.CutPrefix(out, config.absRepositoryPath); !found {
-			return fmt.Errorf("invalid source file path: %s", in)
-		}
-		texec.Executions = append(texec.Executions, &Execution{
-			Source: in,
-			Target: filepath.Join(config.TargetDir, out),
+		list.List = append(list.List, &Execution{
+			Source: filepath.Join(path, file),
+			Target: filepath.Join(config.TargetDir, config.data.ReplaceAll(file)),
 			IsDir:  false,
 		})
 	}
-	// Create executions for multi.
-	for _, m := range meta.Groups {
-		for _, t := range m.Templates {
-			if err = getTemplateExecutions(config, filepath.Join(path, t), execs); err != nil {
-				return
+	*execs = append(*execs, list)
+	if len(a) == 2 {
+		for _, group := range meta.Groups {
+			if group.Name != a[1] {
+				continue
+			}
+			for _, name := range group.Templates {
+				if err = getTemplateExecutions(config, filepath.Join(path, name), execs); err != nil {
+					return
+				}
 			}
 		}
 	}
-
 	return nil
+}
+
+// validateExecutions validates all executions.
+func validateExecutions(config *Config, execs Executions) (err error) {
+	for _, exec := range execs {
+		if err = exec.Metafile.Validate(config.Configuration); err != nil {
+			break
+		}
+	}
+	return
 }
