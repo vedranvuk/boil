@@ -7,7 +7,9 @@ import (
 	"strings"
 
 	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
+	"github.com/vedranvuk/boil/cmd/boil/internal/commands/edit"
 	"github.com/vedranvuk/boil/cmd/boil/internal/commands/exec"
+	"github.com/vedranvuk/boil/cmd/boil/internal/commands/info"
 	"github.com/vedranvuk/boil/cmd/boil/internal/commands/list"
 	"github.com/vedranvuk/boil/cmd/boil/internal/commands/snap"
 	"github.com/vedranvuk/cmdline"
@@ -44,12 +46,6 @@ func main() {
 				Help:        "Enable verbose output.",
 				MappedValue: &programConfig.Overrides.Verbose,
 			},
-			&cmdline.Boolean{
-				LongName:    "prompt",
-				ShortName:   "p",
-				Help:        "Prompt for missing required arguments via stdin.",
-				MappedValue: &programConfig.Overrides.Prompt,
-			},
 			&cmdline.Optional{
 				LongName:    "config",
 				ShortName:   "c",
@@ -60,7 +56,7 @@ func main() {
 				LongName:    "repository",
 				ShortName:   "r",
 				Help:        "Override directory of repository to use.",
-				MappedValue: &programConfig.Overrides.Repository,
+				MappedValue: &programConfig.Overrides.RepositoryPath,
 			},
 			&cmdline.Boolean{
 				LongName: "version",
@@ -82,9 +78,18 @@ func main() {
 				fmt.Printf("boil v%s\n", version)
 				os.Exit(0)
 			}
+			if err = programConfig.LoadOrCreate(); err != nil {
+				return fmt.Errorf("configuration: %w", err)
+			}
+			if c.IsParsed("verbose") {
+				fmt.Printf("Using configuration file: %s\n", programConfig.Runtime.LoadedConfigFile)
+				fmt.Println("Loaded configuration file values:")
+				fmt.Println()
+				programConfig.Print()
+				fmt.Println()
+			}
 			return nil
 		},
-
 		Commands: cmdline.Commands{
 			{
 				Name:    "help",
@@ -106,14 +111,12 @@ func main() {
 				Name: "list",
 				Help: "List templates, optionally starting from specific subdirectory.",
 				Handler: func(c cmdline.Context) error {
-					return list.Run(&list.Config{})
+					return list.Run(&list.Config{
+						Path:          c.RawValues("path").First(),
+						Configuration: programConfig,
+					})
 				},
 				Options: cmdline.Options{
-					&cmdline.Boolean{
-						LongName:  "recursive",
-						ShortName: "r",
-						Help:      "List templates recursively.",
-					},
 					&cmdline.Variadic{
 						Name: "path",
 						Help: "Template subdirectory path to list.",
@@ -125,25 +128,20 @@ func main() {
 				Help: "Create a new template from a source directory or file.",
 				Handler: func(c cmdline.Context) error {
 					return snap.Run(&snap.Config{
-						ConfirmFiles: c.IsParsed("confirm-files"),
-						Force:        c.IsParsed("force"),
+						Wizard:    c.IsParsed("wizard"),
+						Overwrite: c.IsParsed("force"),
 					})
 				},
 				Options: cmdline.Options{
 					&cmdline.Boolean{
+						LongName:  "wizard",
+						ShortName: "z",
+						Help:      "Define the template uzing a wizard.",
+					},
+					&cmdline.Boolean{
 						LongName:  "overwrite",
 						ShortName: "w",
 						Help:      "Overwrite Template if it already exists without prompting.",
-					},
-					&cmdline.Boolean{
-						LongName:  "confirm-files",
-						ShortName: "c",
-						Help:      "Prompt for each file if it should be included in the template.",
-					},
-					&cmdline.Boolean{
-						LongName:  "wizard",
-						ShortName: "z",
-						Help:      "Define additional Template properties using a wizard.",
 					},
 				},
 			},
@@ -151,14 +149,17 @@ func main() {
 				Name: "info",
 				Help: "Show information about a template",
 				Handler: func(c cmdline.Context) error {
-					return list.Run(&list.Config{})
+					return info.Run(&info.Config{})
 				},
 			},
 			{
 				Name: "edit",
 				Help: "Edit a template using the default editor.",
 				Handler: func(c cmdline.Context) error {
-					return nil
+					return edit.Run(&edit.Config{
+						Path:          c.RawValues("path").First(),
+						Configuration: programConfig,
+					})
 				},
 				Options: cmdline.Options{
 					&cmdline.Indexed{
@@ -172,7 +173,7 @@ func main() {
 				Help: "Execute a template to a target directory.",
 				Handler: func(c cmdline.Context) error {
 					// Create a map of UserVariables.
-					var vars = make(map[string]string)
+					var vars = make(exec.VarMap)
 					for _, v := range c.RawValues("var") {
 						var a = strings.Split(v, "=")
 						if len(a) != 2 {
@@ -186,7 +187,7 @@ func main() {
 						TargetDir:     c.RawValues("target-dir").First(),
 						NoExecute:     c.IsParsed("no-execute"),
 						Overwrite:     c.IsParsed("overwrite"),
-						UserVariables: vars,
+						Vars:          vars,
 						Configuration: programConfig,
 					})
 				},

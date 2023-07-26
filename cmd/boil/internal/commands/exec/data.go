@@ -1,35 +1,51 @@
 package exec
 
 import (
+	"fmt"
 	"runtime"
 	"strings"
 )
+
+// VarMap is a map of variables.
+type VarMap map[string]any
 
 // Data is the top level data structure passed to a Template file.
 type Data struct {
 	// Vars is a collection of system variables always present on template
 	// execution, generated from environment.
-	Vars map[string]string
-	// UserVars is a collection of variables given by the user during execution.
-	UserVars map[string]string
+	Vars VarMap
 }
 
-// DataFromConfig returns *Data from config or an error.
-func InitConfigData(config *Config) (err error) {
-	config.data = &Data{
-		Vars:     make(map[string]string),
-		UserVars: make(map[string]string),
+// NeData returns new *Data initialized with standard variables or an error if
+// one occurs. If merge is not nil it is added to the resulting Data.
+func NewData() *Data {
+	return &Data{
+		Vars: make(VarMap),
 	}
+}
 
+// InitStandardVars initializes values of standard variables.
+func (self *Data) InitStandardVars(state *state) error {
 	// Go Version.
 	var (
 		va      = strings.Split(strings.TrimPrefix(runtime.Version(), "go"), ".")
 		version = va[0] + "." + va[1]
-		_       = version
 	)
-	config.data.Vars["GoVersion"] = version
+	self.Vars["GoVersion"] = version
 
-	return
+	return nil
+}
+
+// MergeVars merges vars to self.Vars or returns an error.
+func (self *Data) MergeVars(vars VarMap) error {
+	var exists bool
+	for k, v := range vars {
+		if _, exists = self.Vars[k]; exists {
+			return fmt.Errorf("duplicate variable '%s'", k)
+		}
+		self.Vars[k] = v
+	}
+	return nil
 }
 
 // ReplaceAll replaces all known variable placeholders in input string with

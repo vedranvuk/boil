@@ -41,6 +41,17 @@
 				"--var=b=2",
 				"--var=c=3"
 			]
+		},
+		{
+			"name": "boil list",
+			"type": "go",
+			"request": "launch",
+			"mode": "auto",
+			"program": "${workspaceFolder}/cmd/boil",
+			"args": [
+				"-v",
+				"list"
+			]
 		}
 	]
 }

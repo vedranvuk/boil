@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Repository defines a location where Templates are stored.
@@ -28,6 +29,10 @@ type Repository interface {
 	// itself an entry for it will be set under an empty key - not the standard
 	//  current directory dot ".".
 	LoadMetamap() (Metamap, error)
+
+	// Location returns the repository location in a format specific to
+	// Repository backend.
+	Location() string
 }
 
 // OpenRepository returns an implementation of a Repository depending on
@@ -39,6 +44,13 @@ type Repository interface {
 // If an error occurs it is returned with a nil repository.
 func OpenRepository(path string) (repo Repository, err error) {
 	// TODO: Detect repository path and return an appropriate implementaiton.
+
+	// See if it's http
+	if strings.HasPrefix(strings.ToLower(path), "http") {
+		return nil, errors.New("loading repositories from network not yet implemented")
+	}
+
+	// Check valid local filesystem
 	var fi os.FileInfo
 	if fi, err = os.Stat(path); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -49,6 +61,14 @@ func OpenRepository(path string) (repo Repository, err error) {
 	if !fi.IsDir() {
 		return nil, fmt.Errorf("repository path is not a directory: %s", path)
 	}
+
+	// Get absolute path
+	if !strings.HasPrefix(path, string(os.PathSeparator)) {
+		if path, err = filepath.Abs(path); err != nil {
+			return nil, fmt.Errorf("get absolute repository path: %w", err)
+		}
+	}
+
 	return NewDiskRepository(path), nil
 }
 
@@ -73,3 +93,6 @@ func (self DiskRepository) Open(name string) (fs.File, error) {
 func (self DiskRepository) LoadMetamap() (m Metamap, err error) {
 	return MetamapFromDir(self.root)
 }
+
+// Location implements Repository.Location.
+func (self DiskRepository) Location() string { return self.root }

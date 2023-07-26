@@ -8,7 +8,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"text/tabwriter"
 )
 
 // MetafileName is the name of a file that defines a Boil template.
@@ -211,7 +213,7 @@ func LoadMetadataFromDir(dir string) (metadata *Metafile, err error) {
 // Validate validates that metadata is properly formatted.
 // It checks that multis point to valid Templates in the repo.
 // It checks for duplicate template definitions.
-func (self Metafile) Validate(config *Configuration) error {
+func (self Metafile) Validate(repo Repository) error {
 	return nil
 }
 
@@ -231,38 +233,49 @@ type Metamap map[string]*Metafile
 // instead of the Template that defines the group and will carry a pointer to
 // the same Metadata as the parent Template.
 //
-// If root contains metadata i.e. is a Template itself an entry for it will
-// be set under an empty key - not the standard current directory dot ".".
+// If root contains metadata i.e. is a Template itself an the key for the entry
+// for it be set to current dirrectory: ".".
 func MetamapFromDir(root string) (metamap Metamap, err error) {
+
 	metamap = make(Metamap)
+
 	var metadata *Metafile
-	err = filepath.Walk(root, func(path string, info fs.FileInfo, err error) error {
+	if err = filepath.Walk(root, func(path string, info fs.FileInfo, err error) error {
+
 		if !info.IsDir() {
 			return nil
 		}
 		if err != nil {
 			return fmt.Errorf("walk error: %w", err)
 		}
+
 		if metadata, err = LoadMetadataFromDir(path); err != nil {
 			if !errors.Is(err, errNoMetadata) {
-				return fmt.Errorf("load metamap: %w", err)
+				return err
 			}
 		}
 		if metadata == nil {
 			return nil
 		}
-		var s = strings.TrimPrefix(strings.TrimPrefix(path, root), string(os.PathSeparator))
-		metamap[s] = metadata
+
+		var key string
+		if key = strings.TrimPrefix(path, root); key != "" {
+			key = strings.TrimPrefix(key, string(os.PathSeparator))
+		} else {
+			key = "."
+		}
+		metamap[key] = metadata
+
 		if metadata.Groups == nil {
 			return nil
 		}
 		for _, multi := range metadata.Groups {
-			metamap[fmt.Sprintf("%s:%s", s, multi.Name)] = metadata
+			metamap[fmt.Sprintf("%s#%s", key, multi.Name)] = metadata
 		}
+
 		return nil
-	})
-	if err != nil {
-		err = fmt.Errorf("metamapfromdir: %w", err)
+	}); err != nil {
+		err = fmt.Errorf("load metamap from directory: %w", err)
 	}
 	return
 }
@@ -275,7 +288,27 @@ func (self Metamap) Metafile(path string) (*Metafile, error) {
 	}
 	var meta, exists = self[path]
 	if !exists {
-		return nil, fmt.Errorf("no metadata for path '%s'", path)
+		return nil, os.ErrNotExist
 	}
 	return meta, nil
+}
+
+// Print printes self to stdout.
+func (self Metamap) Print() {
+	var wr = tabwriter.NewWriter(os.Stdout, 2, 2, 2, 32, 0)
+	var a []string
+	for k := range self {
+		a = append(a, k)
+	}
+	sort.Strings(a)
+	fmt.Fprintf(wr, "[Template Name]\t[Path]\n")
+	for _, v := range a {
+		var s = "nil"
+		if self[v] != nil {
+			s = self[v].Name
+		}
+		fmt.Fprintf(wr, "%s\t%s\n", s, v)
+	}
+	fmt.Fprintf(wr, "\n")
+	wr.Flush()
 }

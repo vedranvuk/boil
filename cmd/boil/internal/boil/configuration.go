@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"text/tabwriter"
 
 	"github.com/adrg/xdg"
 )
@@ -40,8 +41,8 @@ func DefaultRepositoryDir() string {
 type Configuration struct {
 	// Author is the default template author info.
 	DefaultAuthor *Author `json:"defaultAuthor,omitempty"`
-	// Repository is the absolute path to the default repository.
-	Repository string `json:"repository"`
+	// RepositoryPath is the absolute path to the default repository.
+	RepositoryPath string `json:"repositoryPath"`
 
 	// DisableBackup, if true disables output directory backup before
 	// Template execution.
@@ -63,16 +64,11 @@ type Configuration struct {
 
 	// Overrides are the configuration overrides specified on command line.
 	// They exist at runtime only and are not serialized with Config.
-	// They are set by Command Run functions.
-	//
-	// Each Command uses these values during setup.
 	Overrides struct {
 		// ConfigFile is the absolute path of loaded config file.
 		ConfigFile string
-		// RepositoryRoot is the absolute path of loaded repository.
-		Repository string
-		// Prompt for missing required Options via stdin.
-		Prompt bool
+		// RepositoryPath is the absolute path of loaded repository.
+		RepositoryPath string
 		// DisableBackup overrides the Configuration.DisableBackup.
 		DisableBackup bool
 		// Verbose specifies wether to enable verbose output.
@@ -87,6 +83,21 @@ type Configuration struct {
 		// into self using self.LoadFromFile.
 		LoadedConfigFile string
 	} `json:"-"`
+}
+
+// Print prints self to stdout.
+func (self *Configuration) Print() {
+	var wr = tabwriter.NewWriter(os.Stdout, 2, 2, 2, 32, 0)
+	fmt.Fprintf(wr, "[Key]\t[Value]\n")
+	fmt.Fprintf(wr, "DefaultAuthor.Name\t%s\n", self.DefaultAuthor.Name)
+	fmt.Fprintf(wr, "DefaultAuthor.Email\t%s\n", self.DefaultAuthor.Email)
+	fmt.Fprintf(wr, "DefaultAuthor.Homepage\t%s\n", self.DefaultAuthor.Homepage)
+	fmt.Fprintf(wr, "RepositoryPath\t%s\n", self.RepositoryPath)
+	fmt.Fprintf(wr, "DisableBackup\t%t\n", self.DisableBackup)
+	fmt.Fprintf(wr, "Editor.Program\t%s\n", self.Editor.Program)
+	fmt.Fprintf(wr, "Editor.Arguments\t%v\n", self.Editor.Arguments)
+	fmt.Fprintf(wr, "\n")
+	wr.Flush()
 }
 
 // DefaultConfig returns a config set to defaults or an error.
@@ -105,7 +116,7 @@ func DefaultConfig() (config *Configuration, err error) {
 	config.DefaultAuthor = &Author{
 		Name: name,
 	}
-	config.Repository = DefaultRepositoryDir()
+	config.RepositoryPath = DefaultRepositoryDir()
 	config.Editor.Program = "code"
 	config.Editor.Arguments = []string{"$TemplateDirectory"}
 	return
@@ -160,7 +171,7 @@ func (self *Configuration) SaveToFile(filename string) (err error) {
 		}
 	}
 	// Create default repository dir if not exists.
-	if _, err = os.Stat(self.Repository); err != nil {
+	if _, err = os.Stat(self.RepositoryPath); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("stat repository: %w", err)
 		}
@@ -185,4 +196,12 @@ func (self *Configuration) ShouldBackup() (should bool) {
 		should = !self.DisableBackup
 	}
 	return
+}
+
+// GetRepositoryPath returns the RepositoryPath considering override values.
+func (self *Configuration) GetRepositoryPath() string {
+	if self.Overrides.RepositoryPath != "" {
+		return self.Overrides.RepositoryPath
+	}
+	return self.RepositoryPath
 }
