@@ -31,7 +31,7 @@ func Run(config *Config) (err error) {
 		}
 	}
 	if config.Path != "" {
-		fmt.Printf("Templates found in current repository at %s\n:", config.Path)
+		fmt.Printf("Templates found in current repository at %s:\n", config.Path)
 	} else {
 		fmt.Printf("Templates found in current repository:\n")
 	}

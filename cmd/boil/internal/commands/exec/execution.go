@@ -1,44 +1,190 @@
 package exec
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+	"text/tabwriter"
 	"text/template"
 
 	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
 )
 
-// Execution defines an execution of a single template file.
+// Execution defines the source and target of a template file to be executed.
 type Execution struct {
-	// Source is path of the source Template file relative to the
-	// repository root to be executed. Placeholders in the Source path will be
-	// expanded when determining absolute Target path.
+	// Source is unmodified path of the source Template file relative to the
+	// loaded repository root to be executed.
 	Source string
 	// Target is the absolute path of the target file which will contain Source
 	// template output. If the source path had placeholder values they will be
-	// replaced with actual values.
+	// replaced with actual values to generate output filenames.
 	Target string
 	// IsDir wil be true if Source is a directory.
 	IsDir bool
 }
 
-// Executions defines a list of executions for a Template.
-type ExecutionList struct {
-	TemplateName string
-	Metafile     *boil.Metafile
-	List         []*Execution
+// Template defines a list of template files to execute for a Template.
+type Template struct {
+	// Name is the name of the template.
+	Name string
+	// Metafile is the Template Metafile.
+	Metafile *boil.Metafile
+	// List is a list of executions to be performed as for this template.
+	List []*Execution
 }
 
-// Executions is a list of ExecutionLists.
+// Templates is a list of Template.
 // It holds a list of groups of files to execute for a Template.
-type Executions []*ExecutionList
+type Templates []*Template
+
+// GetTemplatesForState returns Templates to be executed from a state. It
+// returns empty Templates and an error if the state is invalid, one or more
+// template files is missing, any group addresses a missing template or some
+// other error.
+func GetTemplatesForState(state *state) (templates Templates, err error) {
+	err = produceTemplates(state, state.TemplatePath, &templates)
+	return
+}
+
+// produceTemplates uses state to recursively construct execs starting
+// from path. if the function failes it returns an error.
+func produceTemplates(state *state, path string, templates *Templates) (err error) {
+
+	var (
+		meta  *boil.Metafile
+		group string
+	)
+
+	path, group = boil.ParseTemplatePath(path)
+
+	if meta, err = state.Metamap.Metafile(path); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		return fmt.Errorf("load template: '%w'", err)
+	}
+
+	var list = &Template{
+		Name:     meta.Name,
+		Metafile: meta,
+	}
+
+	for _, dir := range meta.Directories {
+		list.List = append(list.List, &Execution{
+			Source: filepath.Join(path, dir),
+			Target: filepath.Join(state.TargetDir, dir),
+			IsDir:  true,
+		})
+	}
+
+	for _, file := range meta.Files {
+		if _, err := fs.Stat(state.Repository, filepath.Join(path, file)); err != nil {
+			return fmt.Errorf("stat template file '%s': %w", file, err)
+		}
+		list.List = append(list.List, &Execution{
+			Source: filepath.Join(path, file),
+			Target: filepath.Join(state.TargetDir, file),
+			IsDir:  false,
+		})
+	}
+
+	*templates = append(*templates, list)
+
+	if group != "" {
+		for _, g := range meta.Groups {
+			if g.Name == group {
+				continue
+			}
+			for _, name := range g.Templates {
+				if err = produceTemplates(state, filepath.Join(path, name), templates); err != nil {
+					return
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// PromptAnswered is a callback called by Templates.PresentPrompts for each
+// prompt answered by the user where variable is the name of the variable the
+// prompt was for and the value is the value enetered. If the function returns
+// an error it is propagated back to the caller.
+type PromptAnswered func(variable, value string) error
+
+// PresentPrompts presents a prompt to the user on command line for each of
+// the prompts defined in all Templates in self, in order as they appear in
+// self, depth first.
+//
+// Method calls callback for each prompt and returns nil if all prompts were
+// successfully answered. If not, an error that the first answered callback
+// returned is returned. See PromptAnswered for more.
+func (self Templates) PresentPrompts(callback PromptAnswered) (err error) {
+	for _, template := range self {
+		for _, prompt := range template.Metafile.Prompts {
+			fmt.Printf("Enter value for %s:\n", prompt.Prompt)
+			var reader = bufio.NewReader(os.Stdin)
+			var input string
+			for {
+				if input, err = reader.ReadString('\n'); err != nil {
+					return fmt.Errorf("prompt input: %w", err)
+				}
+				if err = callback(prompt.Variable, strings.TrimSpace(input)); err != nil {
+					return
+				}
+				break
+			}
+		}
+	}
+	return nil
+}
+
+// ExpandExecutionTargets expands all Execution.Target values of all Templates
+// in self using data and returns nil. If an error occurs it is returned and
+// self may be considered invalid in undetermined state.
+func (self Templates) ExpandExecutionTargets(data *Data) (err error) {
+	for _, template := range self {
+		for _, execution := range template.List {
+			execution.Target = data.ReplaceAll(execution.Target)
+		}
+	}
+	return
+}
+
+// CheckForTargetConflicts returns nil if none of the Target paths of all
+// defined Executions in self do not point to an existing file. Otherwise a
+// descriptive error is returned.
+func (self Templates) CheckForTargetConflicts() (err error) {
+	for _, execGroup := range self {
+		for _, exec := range execGroup.List {
+			if _, err = os.Stat(exec.Target); err != nil {
+				if !errors.Is(err, os.ErrNotExist) {
+					return fmt.Errorf("stat target file: %w", err)
+				}
+			} else {
+				return fmt.Errorf("target file already exists: %s", exec.Target)
+			}
+		}
+	}
+	return nil
+}
+
+// Validate validates self.
+func (self Templates) Validate(state *state) (err error) {
+	for _, template := range self {
+		if err = template.Metafile.Validate(state.Repository); err != nil {
+			break
+		}
+	}
+	return
+}
 
 // Execute executes all defined executions or returns an error.
-func (self Executions) Execute(state *state) (err error) {
+func (self Templates) Execute(state *state) (err error) {
 
 	if state.MakeBackups {
 		var id string
@@ -97,114 +243,18 @@ func (self Executions) Execute(state *state) (err error) {
 	return nil
 }
 
-// CheckForTargetConflicts returns nil if none of the Target paths of all
-// defined Executions in self do not point to an existing file. Otherwise a
-// descriptive error is returned.
-func (self Executions) CheckForTargetConflicts() (err error) {
-	for _, execGroup := range self {
-		for _, exec := range execGroup.List {
-			if _, err = os.Stat(exec.Target); err != nil {
-				if !errors.Is(err, os.ErrNotExist) {
-					return fmt.Errorf("stat target file: %w", err)
-				}
-			} else {
-				return fmt.Errorf("target file already exists: %s", exec.Target)
-			}
+// Print prints self to stdout.
+func (self Templates) Print() {
+	var wr = tabwriter.NewWriter(os.Stdout, 2, 2, 2, 32, 0)
+	fmt.Println()
+	fmt.Println("Executions:")
+	fmt.Println()
+	for _, exec := range self {
+		fmt.Fprintf(wr, "[Template]\t[Source]\t[Target]\n")
+		for _, def := range exec.List {
+			fmt.Fprintf(wr, "%s\t%s\t%s\n", exec.Name, def.Source, def.Target)
 		}
 	}
-	return nil
-}
-
-// PrepareExecutions prepares a list of executions from an Exec Config
-// or returns an error if one occurs.
-// It will return an error if:
-// Multi with missing templates.
-// Missing files or dirs.
-func PrepareExecutions(state *state) (execs Executions, err error) {
-	if err = getTemplateExecutions(state, state.TemplatePath, &execs); err == nil {
-		if err = validateExecutions(state, execs); err != nil {
-			err = fmt.Errorf("executions validation failed: %w", err)
-		}
-	}
-	return
-}
-
-// parseTemplatePath parses a raw Template path into elements and returns nil or
-// returns an error if the path is invalid or an error occured.
-func parseTemplatePath(input string) (path, group string, err error) {
-	if input == "" {
-		return ".", "", nil
-	}
-	var a = strings.Split(path, "#")
-	if l := len(a); l < 1 || l > 2 {
-		return "", "", fmt.Errorf("invalid template path '%s'", path)
-	}
-
-	return "", "", nil
-}
-
-// getTemplateExecutions uses state to recursively construct execs starting
-// from path. if the function failes it returns an error.
-func getTemplateExecutions(state *state, path string, execs *Executions) (err error) {
-
-	var (
-		meta *boil.Metafile
-		group string
-	)
-
-	if path, group, err = parseTemplatePath(path); err != nil {
-		return err
-	}
-
-	if meta, err = state.Metamap.Metafile(path); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return err
-		}
-		return fmt.Errorf("load template: '%w'", err)
-	}
-	var list = &ExecutionList{
-		TemplateName: meta.Name,
-		Metafile:     meta,
-	}
-	for _, dir := range meta.Directories {
-		list.List = append(list.List, &Execution{
-			Source: filepath.Join(path, dir),
-			Target: filepath.Join(state.TargetDir, state.Data.ReplaceAll(dir)),
-			IsDir:  true,
-		})
-	}
-	for _, file := range meta.Files {
-		if _, err := fs.Stat(state.Repository, filepath.Join(path, file)); err != nil {
-			return fmt.Errorf("template file '%s' stat error: %w", file, err)
-		}
-		list.List = append(list.List, &Execution{
-			Source: filepath.Join(path, file),
-			Target: filepath.Join(state.TargetDir, state.Data.ReplaceAll(file)),
-			IsDir:  false,
-		})
-	}
-	*execs = append(*execs, list)
-	if group != "" {
-		for _, g := range meta.Groups {
-			if g.Name == group {
-				continue
-			}
-			for _, name := range g.Templates {
-				if err = getTemplateExecutions(state, filepath.Join(path, name), execs); err != nil {
-					return
-				}
-			}
-		}
-	}
-	return nil
-}
-
-// validateExecutions validates all executions.
-func validateExecutions(state *state, execs Executions) (err error) {
-	for _, exec := range execs {
-		if err = exec.Metafile.Validate(state.Repository); err != nil {
-			break
-		}
-	}
-	return
+	fmt.Fprintf(wr, "\n")
+	wr.Flush()
 }

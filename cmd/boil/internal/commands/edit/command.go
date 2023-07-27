@@ -2,7 +2,6 @@ package edit
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
 )
@@ -24,18 +23,7 @@ func Run(config *Config) (err error) {
 	if meta, err = repo.LoadMetamap(); err != nil {
 		return fmt.Errorf("load metamap: %w", err)
 	}
-	var filtered = make(boil.Metamap)
-	for k, v := range meta {
-		if k = strings.ToLower(k); strings.HasPrefix(k, strings.ToLower(config.Path)) {
-			filtered[k] = v
-		}
-	}
-	if config.Path != "" {
-		fmt.Printf("Templates found in current repository at %s\n:", config.Path)
-	} else {
-		fmt.Printf("Templates found in current repository:\n")
-	}
-	fmt.Println()
-	filtered.Print()
+	_ = repo
+	_ = meta
 	return nil
 }

@@ -19,9 +19,9 @@ import (
 const version = "0.0.0-alpha"
 
 var (
+	err           error
 	programConfig *boil.Configuration // boil configuration
 	cmdlineConfig *cmdline.Config     // command line configuration
-	err           error               // reusable error
 )
 
 func main() {

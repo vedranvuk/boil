@@ -24,6 +24,16 @@ func NewData() *Data {
 	}
 }
 
+// AddVar adds a variable and returns nil on success or an error if a variable
+// under specified key already exists.
+func (self *Data) AddVar(key string, value any) error {
+	if _, exists := self.Vars[key]; exists {
+		return fmt.Errorf("variable %s already registered", key)
+	}
+	self.Vars[key] = value
+	return nil
+}
+
 // InitStandardVars initializes values of standard variables.
 func (self *Data) InitStandardVars(state *state) error {
 	// Go Version.

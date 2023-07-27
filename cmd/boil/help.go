@@ -43,8 +43,7 @@ func handleHelp(c cmdline.Context) error {
 		return nil
 	}
 
-	// Default overview.
-	cmdlineConfig.PrintUsage()
+	// Overview
 	fmt.Println()
 	cmdline.PrintConfig(os.Stdout, cmdlineConfig)
 	return nil

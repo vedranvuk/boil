@@ -1,13 +1,10 @@
 package exec
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
-	"text/tabwriter"
 
 	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
 )
@@ -51,7 +48,7 @@ type Config struct {
 	Configuration *boil.Configuration
 }
 
-// ShouldPrint returns true if executin should be printed.
+// ShouldPrint returns true if Config.Verbose or Config.NoExecute is true.
 func (self *Config) ShouldPrint() bool {
 	return self.Configuration.Overrides.Verbose || self.NoExecute
 }
@@ -63,6 +60,7 @@ func (self *Config) GetRepositoryPath() string {
 
 // state is the Exec command state.
 type state struct {
+	RepositoryPath string
 	// TemplatePath is the adjusted path to the template usable by Repository.
 	TemplatePath string
 	// TargetDir is the adjusted absolute path to the output directory.
@@ -75,6 +73,8 @@ type state struct {
 	Data *Data
 	// MakeBackup dictates if backups should be made on execution.
 	MakeBackups bool
+	// Templates are the Templates to execute.
+	Templates Templates
 }
 
 // Run executes the Exec command configured by config.
@@ -83,104 +83,80 @@ type state struct {
 func Run(config *Config) (err error) {
 
 	var state = &state{
-		TemplatePath: config.TemplatePath,
-		TargetDir:    config.TargetDir,
-		MakeBackups:  config.Configuration.ShouldBackup(),
-		Data:         NewData(),
+		RepositoryPath: config.GetRepositoryPath(),
+		TemplatePath:   config.TemplatePath,
+		TargetDir:      config.TargetDir,
+		MakeBackups:    config.Configuration.ShouldBackup(),
+		Data:           NewData(),
 	}
 
 	if config.NoExecute {
 		fmt.Printf("NoExecute enabled, printing commands instead of executing.\n")
 	}
 
-	// Open repository
-	if strings.HasPrefix(config.TemplatePath, string(os.PathSeparator)) {
-		// If TemplatePath is an absolute path open the Repository in the
-		// template directory and adjust the template path to an empty string
-		// i.e. root repository directory.
-		if state.Repository, err = boil.OpenRepository(config.TemplatePath); err != nil {
-			return fmt.Errorf("open repository: %w", err)
-		}
-		state.TemplatePath = ""
+	if boil.TemplatePathIsAbsolute(config.TemplatePath) {
+		// If TemplatePath is an absolute path open the Template as the
+		// Repository and adjust the template path to "current directory"
+		// pointing to repository root.
+		state.RepositoryPath = config.TemplatePath
+		state.TemplatePath = "."
 		if config.ShouldPrint() {
 			fmt.Println("Absolute Template path specified, repository opened at template root.")
 		}
-	} else {
-		if state.Repository, err = boil.OpenRepository(config.GetRepositoryPath()); err != nil {
-			return fmt.Errorf("open repository: %w", err)
-		}
-	}
-	if config.ShouldPrint() {
-		fmt.Printf("Repository location: %s\n", state.Repository.Location())
 	}
 
-	// Load Metamap
+	if state.Repository, err = boil.OpenRepository(config.TemplatePath); err != nil {
+		return fmt.Errorf("open repository: %w", err)
+	}
+
 	if state.Metamap, err = state.Repository.LoadMetamap(); err != nil {
 		return fmt.Errorf("load metamap: %w", err)
 	}
-	if config.ShouldPrint() {
-		state.Metamap.Print()
-	}
 
-	// Get absolute target path and adjust it in config.
 	if state.TargetDir, err = filepath.Abs(config.TargetDir); err != nil {
 		return fmt.Errorf("get absolute target path: %w", err)
 	}
 
-	// Init data.
 	if err = state.Data.InitStandardVars(state); err != nil {
 		return fmt.Errorf("initialize data: %w", err)
 	}
+
 	if err = state.Data.MergeVars(config.Vars); err != nil {
 		return fmt.Errorf("load user variables: %w", err)
 	}
 
-	// Get a list of template file executions for this Template.
-	var execs Executions
-	if execs, err = PrepareExecutions(state); err != nil {
+	if state.Templates, err = GetTemplatesForState(state); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("not a boil template: %s", config.TemplatePath)
 		}
 		return fmt.Errorf("enumerate template files for execution: %w", err)
 	}
+
+	if err = state.Templates.PresentPrompts(func(key, value string) error {
+		return state.Data.AddVar(key, value)
+	}); err != nil {
+		return fmt.Errorf("prompt user for input data: %w", err)
+	}
+
+	if err = state.Templates.ExpandExecutionTargets(state.Data); err != nil {
+		return fmt.Errorf("expand target file names: %w", err)
+	}
+
+	if err = state.Templates.Validate(state); err != nil {
+		return fmt.Errorf("validation failed: %w", err)
+	}
+
 	if config.ShouldPrint() {
-		var wr = tabwriter.NewWriter(os.Stdout, 2, 2, 2, 32, 0)
-		fmt.Println()
-		fmt.Println("Executions:")
-		fmt.Println()
-		for _, exec := range execs {
-			fmt.Fprintf(wr, "[Template]\t[Source]\t[Target]\n")
-			for _, def := range exec.List {
-				fmt.Fprintf(wr, "%s\t%s\t%s\n", exec.TemplateName, def.Source, def.Target)
-			}
-		}
-		fmt.Fprintf(wr, "\n")
-		wr.Flush()
+		fmt.Printf("Repository location: %s\n", state.Repository.Location())
+		state.Metamap.Print()
+		state.Templates.Print()
 	}
 
-	// Add Data from Prompts.
-	for _, exec := range execs {
-		for _, prompt := range exec.Metafile.Prompts {
-			fmt.Printf("Enter value for %s:\n", prompt.Prompt)
-			var reader = bufio.NewReader(os.Stdin)
-			var input string
-			for {
-				if input, err = reader.ReadString('\n'); err != nil {
-					return fmt.Errorf("prompt input: %w", err)
-				}
-				state.Data.Vars[prompt.Variable] = strings.TrimSpace(input)
-				break
-			}
-		}
-	}
-
-	// Check for existing target files if no overwrite allowed.
 	if !config.Overwrite {
-		if err = execs.CheckForTargetConflicts(); err != nil {
+		if err = state.Templates.CheckForTargetConflicts(); err != nil {
 			return err
 		}
 	}
 
-	// Execute and exit.
-	return execs.Execute(state)
+	return state.Templates.Execute(state)
 }

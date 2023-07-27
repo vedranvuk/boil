@@ -9,6 +9,23 @@ import (
 	"strings"
 )
 
+// ParseTemplatePath parses the input string representing a Template path into
+// path and group parts which are delimited with first occurence of a hashtag.
+//
+// If the input is an empty string a "." path is returned and an empty group.
+func ParseTemplatePath(input string) (path, group string) {
+	if input == "" {
+		return ".", ""
+	}
+	path, group, _ = strings.Cut(input, "#")
+	return
+}
+
+// TemplatePathIsAbsolute returns true if the path begins with a path separator.
+func TemplatePathIsAbsolute(path string) bool {
+	return strings.HasPrefix(path, string(os.PathSeparator))
+}
+
 // Repository defines a location where Templates are stored.
 //
 // Templates inside a Repository are addressed by a path relative to the
