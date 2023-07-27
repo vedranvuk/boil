@@ -8,34 +8,42 @@ import (
 )
 
 type Config struct {
-	Path string
+	// Prefix is the path prefix at which to start listing.
+	Prefix string
 	// Config is the loaded program configuration.
 	Configuration *boil.Configuration
 }
 
 func Run(config *Config) (err error) {
+
 	var (
-		repo boil.Repository
-		meta boil.Metamap
+		repo     boil.Repository
+		meta     boil.Metamap
+		filtered = make(boil.Metamap)
 	)
+
 	if repo, err = boil.OpenRepository(config.Configuration.GetRepositoryPath()); err != nil {
 		return fmt.Errorf("open repository: %w", err)
 	}
+
 	if meta, err = repo.LoadMetamap(); err != nil {
 		return fmt.Errorf("load metamap: %w", err)
 	}
-	var filtered = make(boil.Metamap)
+
 	for k, v := range meta {
-		if k = strings.ToLower(k); strings.HasPrefix(k, strings.ToLower(config.Path)) {
+		if k = strings.ToLower(k); strings.HasPrefix(k, strings.ToLower(config.Prefix)) {
 			filtered[k] = v
 		}
 	}
-	if config.Path != "" {
-		fmt.Printf("Templates found in current repository at %s:\n", config.Path)
+
+	if config.Prefix != "" {
+		fmt.Printf("Templates found in current repository at %s:\n", config.Prefix)
 	} else {
 		fmt.Printf("Templates found in current repository:\n")
 	}
 	fmt.Println()
+
 	filtered.Print()
+
 	return nil
 }

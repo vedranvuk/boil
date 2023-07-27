@@ -103,7 +103,7 @@ type Metafile struct {
 		// No placeholders are available to expand in PerParse action
 		// definition and any placeholder values found in the Action definition
 		// will be unchanged and passed as defined, without raising an error.
-		PreParse []*Action `json:"preParse,omitempty"`
+		PreParse Actions `json:"preParse,omitempty"`
 		// PreExecute is a slice of actions to perform before the template is
 		// executed in the order they are defined. It is called after the
 		// variables were defined by parsing command line input, files given as
@@ -112,13 +112,13 @@ type Metafile struct {
 		//
 		// This useful to execute some Template setup commands that depend on
 		// Template variables.
-		PreExecute []*Action `json:"preExecute,omitempty"`
+		PreExecute Actions `json:"preExecute,omitempty"`
 
 		// PostExecute is a slice of actions to perform after the template was
 		// executed, in order they are defined. This is useful for performing
 		// cleanup operations. Variables will be available for expansion in the
 		// action definition via placeholders.
-		PostExecute []*Action `json:"postExecute,omitempty"`
+		PostExecute Actions `json:"postExecute,omitempty"`
 	} `json:"actions,omitempty"`
 
 	// Prompts is a list of prompts to present to the user before Template
@@ -131,8 +131,40 @@ type Metafile struct {
 	// A failed validation will then re-prompt the user for value.
 	Prompts []*Prompt
 
-	// directory is the directory from which metadata was loaded from.
+	// directory is the directory from which Metafile was loaded from.
 	directory string
+}
+
+// errNoMetadata is returned by LoadMetadataFromDir if a metadata file
+// does not exist in specified directory.
+var errNoMetadata = errors.New("no metadata found")
+
+// LoadMetafileFromDir loads metadata from dir and returns it or an error.
+func LoadMetafileFromDir(dir string) (metadata *Metafile, err error) {
+	var buf []byte
+	if buf, err = ioutil.ReadFile(filepath.Join(dir, MetafileName)); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, errNoMetadata
+		}
+		return nil, fmt.Errorf("stat metafile: %w", err)
+	}
+	metadata = &Metafile{directory: dir}
+	if err = json.Unmarshal(buf, metadata); err != nil {
+		return nil, fmt.Errorf("unmarshal metafile: %w", err)
+	}
+	return
+}
+
+// Save saves self to self.directory or returns an error.
+func (self *Metafile) Save() (err error) {
+	var buf []byte
+	if buf, err = json.Marshal(self); err != nil {
+		return fmt.Errorf("marshal metafile: %w", err)
+	}
+	if err = ioutil.WriteFile(filepath.Join(self.directory, MetafileName), buf, os.ModePerm); err != nil {
+		return fmt.Errorf("write metafile: %w", err)
+	}
+	return nil
 }
 
 // Author defines an author of a Template or a Repository.
@@ -156,25 +188,6 @@ type Group struct {
 	Templates []string `json:"templates,omitempty"`
 }
 
-// Action defines some external action to execute via command line.
-// See Metafile.Actions for details on Action usage.
-type Action struct {
-	// Description is the description text of the Action. It's an optional text
-	// that should describe the action purpose.
-	Description string `json:"description,omitempty"`
-	// Program is the path to executable to run.
-	Program string `json:"program,omitempty"`
-	// Arguments are the arguments to pass to the executable.
-	Arguments []string `json:"arguments,omitempty"`
-	// WorkDir is the working directory to run the Program from.
-	WorkDir string `json:"workDir,omitempty"`
-	// Environment is the additional values to set in the Program environment.
-	Environment map[string]string `json:"environment,omitempty"`
-	// NoFail, if true will not break the execution of the process that ran
-	// the Action, but it will generate a warning in the output.
-	NoFail bool
-}
-
 // Prompt defines a prompt to the user for input of variable values.
 // See Metafile.Prompts for details on Prompt usage.
 type Prompt struct {
@@ -190,31 +203,33 @@ type Prompt struct {
 	RegExp string `json:"regexp,omitempty"`
 }
 
-// errNoMetadata is returned by LoadMetadataFromDir if a metadata file
-// does not exist in specified directory.
-var errNoMetadata = errors.New("no metadata found")
-
-// LoadMetadataFromDir loads metadata from dir and returns it or an error.
-func LoadMetadataFromDir(dir string) (metadata *Metafile, err error) {
-	var buf []byte
-	if buf, err = ioutil.ReadFile(filepath.Join(dir, MetafileName)); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil, errNoMetadata
-		}
-		return nil, fmt.Errorf("stat metafile: %w", err)
-	}
-	metadata = &Metafile{directory: dir}
-	if err = json.Unmarshal(buf, metadata); err != nil {
-		return nil, fmt.Errorf("unmarshal metafile: %w", err)
-	}
-	return
-}
-
 // Validate validates that metadata is properly formatted.
 // It checks that multis point to valid Templates in the repo.
 // It checks for duplicate template definitions.
 func (self Metafile) Validate(repo Repository) error {
+	// TODO Implement Metafile.Validate
 	return nil
+}
+
+// ExecPreParseActions executes all PreParse Actions defined in the Metafile.
+// It returns the error of the first Action that failed and stops execution.
+// If no error occurs nil is returned.
+func (self Metafile) ExecPreParseActions() error {
+	return self.Actions.PreParse.ExecuteAll(nil)
+}
+
+// ExecPreExecuteActions executes all PreExecute Actions defined in the Metafile.
+// It returns the error of the first Action that failed and stops execution.
+// If no error occurs nil is returned.
+func (self Metafile) ExecPreExecuteActions(variables Variables) error {
+	return self.Actions.PreExecute.ExecuteAll(variables)
+}
+
+// ExecPostExecuteActions executes all PostExecute Actions defined in the Metafile.
+// It returns the error of the first Action that failed and stops execution.
+// If no error occurs nil is returned.
+func (self Metafile) ExecPostExecuteActions(variables Variables) error {
+	return self.Actions.PostExecute.ExecuteAll(variables)
 }
 
 // Metamap maps a Template path to its Metadata.
@@ -249,7 +264,7 @@ func MetamapFromDir(root string) (metamap Metamap, err error) {
 			return fmt.Errorf("walk error: %w", err)
 		}
 
-		if metadata, err = LoadMetadataFromDir(path); err != nil {
+		if metadata, err = LoadMetafileFromDir(path); err != nil {
 			if !errors.Is(err, errNoMetadata) {
 				return err
 			}

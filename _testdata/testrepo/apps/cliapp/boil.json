@@ -50,13 +50,27 @@
 					"$ModulePath"
 				],
 				"workDir": "$OutputDirectory"
+			},
+			{
+				"description": "Tidy go.mod file",
+				"program": "go",
+				"arguments": [
+					"mod",
+					"tidy"
+				],
+				"workDir": "$OutputDirectory"
 			}
 		]
 	},
 	"prompts": [
 		{
+			"variable": "ProjectName",
+			"prompt": "Project name",
+			"regExp": ".+"
+		},
+		{
 			"variable": "ModulePath",
-			"prompt": "Project Module Path",
+			"prompt": "Go module path",
 			"regExp": ".+"
 		}
 	]

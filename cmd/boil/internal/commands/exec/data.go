@@ -2,25 +2,22 @@ package exec
 
 import (
 	"fmt"
-	"runtime"
-	"strings"
-)
 
-// VarMap is a map of variables.
-type VarMap map[string]any
+	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
+)
 
 // Data is the top level data structure passed to a Template file.
 type Data struct {
 	// Vars is a collection of system variables always present on template
 	// execution, generated from environment.
-	Vars VarMap
+	Vars boil.Variables
 }
 
 // NeData returns new *Data initialized with standard variables or an error if
 // one occurs. If merge is not nil it is added to the resulting Data.
 func NewData() *Data {
 	return &Data{
-		Vars: make(VarMap),
+		Vars: make(boil.Variables),
 	}
 }
 
@@ -36,18 +33,13 @@ func (self *Data) AddVar(key string, value any) error {
 
 // InitStandardVars initializes values of standard variables.
 func (self *Data) InitStandardVars(state *state) error {
-	// Go Version.
-	var (
-		va      = strings.Split(strings.TrimPrefix(runtime.Version(), "go"), ".")
-		version = va[0] + "." + va[1]
-	)
-	self.Vars["GoVersion"] = version
-
+	self.Vars["OutputDirectory"] = state.TargetDir
+	self.Vars["TemplatePath"] = state.TemplatePath
 	return nil
 }
 
 // MergeVars merges vars to self.Vars or returns an error.
-func (self *Data) MergeVars(vars VarMap) error {
+func (self *Data) MergeVars(vars boil.Variables) error {
 	var exists bool
 	for k, v := range vars {
 		if _, exists = self.Vars[k]; exists {
@@ -61,14 +53,5 @@ func (self *Data) MergeVars(vars VarMap) error {
 // ReplaceAll replaces all known variable placeholders in input string with
 // actual values and returns it.
 func (self *Data) ReplaceAll(in string) (out string) {
-	// "ProjectName": filepath.Base(config.ModulePath),
-	// "TargetDir":   config.TargetDir,
-	// "GoVersion":   version,
-	// "ModulePath":  config.ModulePath,
-
-	// 	out = in
-	// 	for k, v := range self {
-	// 		out = strings.ReplaceAll(out, "$"+k, v)
-	// 	}
-	return in
+	return self.Vars.ReplaceAll(in)
 }

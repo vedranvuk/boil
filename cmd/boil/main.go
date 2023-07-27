@@ -112,14 +112,14 @@ func main() {
 				Help: "List templates, optionally starting from specific subdirectory.",
 				Handler: func(c cmdline.Context) error {
 					return list.Run(&list.Config{
-						Path:          c.RawValues("path").First(),
+						Prefix:        c.RawValues("prefix").First(),
 						Configuration: programConfig,
 					})
 				},
 				Options: cmdline.Options{
 					&cmdline.Variadic{
-						Name: "path",
-						Help: "Template subdirectory path to list.",
+						Name: "prefix",
+						Help: "Path prefix at which to start listing.",
 					},
 				},
 			},
@@ -128,11 +128,18 @@ func main() {
 				Help: "Create a new template from a source directory or file.",
 				Handler: func(c cmdline.Context) error {
 					return snap.Run(&snap.Config{
-						Wizard:    c.IsParsed("wizard"),
-						Overwrite: c.IsParsed("force"),
+						TemplatePath:  c.RawValues("template-path").First(),
+						Wizard:        c.IsParsed("wizard"),
+						Overwrite:     c.IsParsed("overwrite"),
+						SourcePath:    c.RawValues("source-path").First(),
+						Configuration: programConfig,
 					})
 				},
 				Options: cmdline.Options{
+					&cmdline.Indexed{
+						Name: "template-path",
+						Help: "Path of the Template to be executed.",
+					},
 					&cmdline.Boolean{
 						LongName:  "wizard",
 						ShortName: "z",
@@ -142,6 +149,10 @@ func main() {
 						LongName:  "overwrite",
 						ShortName: "w",
 						Help:      "Overwrite Template if it already exists without prompting.",
+					},
+					&cmdline.Variadic{
+						Name: "source-path",
+						Help: "Source directory or file path.",
 					},
 				},
 			},
@@ -173,7 +184,7 @@ func main() {
 				Help: "Execute a template to a target directory.",
 				Handler: func(c cmdline.Context) error {
 					// Create a map of UserVariables.
-					var vars = make(exec.VarMap)
+					var vars = make(boil.Variables)
 					for _, v := range c.RawValues("var") {
 						var a = strings.Split(v, "=")
 						if len(a) != 2 {

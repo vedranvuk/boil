@@ -33,13 +33,13 @@
 			"program": "${workspaceFolder}/cmd/boil",
 			"args": [
 				"-v",
+				"-r=${workspaceFolder}/_testdata/testrepo",
 				"exec",
 				"-w",
-				"apps/cliapp:all",
-				"--target-dir=${workspaceFolder}/_testdata/output/cliapp",
-				"--var=a=1",
-				"--var=b=2",
-				"--var=c=3"
+				"apps/cliapp#all",
+				"--target-dir=${workspaceFolder}/_testdata/output",
+				"--var=ProjectName=Penis",
+				"--var=ModulePath=github.com/vedranvuk/cliapp"
 			]
 		},
 		{
@@ -51,6 +51,20 @@
 			"args": [
 				"-v",
 				"list"
+			]
+		},
+		{
+			"name": "boil snap",
+			"type": "go",
+			"request": "launch",
+			"mode": "auto",
+			"cwd": "${workspaceFolder}/_testdata/snapshot",
+			"program": "${workspaceFolder}/cmd/boil",
+			"args": [
+				"-v",
+				"snap",
+				"-w",
+				"lol/stfu"
 			]
 		}
 	]

@@ -9,30 +9,24 @@ import (
 	"strings"
 )
 
-// ParseTemplatePath parses the input string representing a Template path into
-// path and group parts which are delimited with first occurence of a hashtag.
-//
-// If the input is an empty string a "." path is returned and an empty group.
-func ParseTemplatePath(input string) (path, group string) {
-	if input == "" {
-		return ".", ""
-	}
-	path, group, _ = strings.Cut(input, "#")
-	return
-}
-
-// TemplatePathIsAbsolute returns true if the path begins with a path separator.
-func TemplatePathIsAbsolute(path string) bool {
-	return strings.HasPrefix(path, string(os.PathSeparator))
-}
-
 // Repository defines a location where Templates are stored.
 //
 // Templates inside a Repository are addressed by a path relative to the
 // Repository root, i.e. 'apps/cliapp'.
 type Repository interface {
-	// FS wraps the Open method to open a file from a repository.
-	fs.FS
+	// StatFS wraps the Stat method to stat a file from a repository.
+	fs.StatFS
+
+	// NewTemplate creates a new Template at the given path and returns its
+	// metadata for modification and a nil error. If a template at path already
+	// exists or some other error occurs it is returned.
+	NewTemplate(string) (*Metafile, error)
+
+	// NewDirectory creates a new directory at the specified path relative to
+	// the repository root and returns nil on success or if the target directory
+	// already exists. If the path is invalid or other error occurs it is
+	// returned.
+	NewDirectory(string) error
 
 	// LoadMetamap loads metadata from root directory recursively recursively
 	// walking all child subdirectories and returns it or returns a descriptive
@@ -101,9 +95,28 @@ func NewDiskRepository(root string) *DiskRepository {
 	return &DiskRepository{root}
 }
 
-// Open implements the Repository.fs.FS.Open.
-func (self DiskRepository) Open(name string) (fs.File, error) {
-	return os.OpenFile(filepath.Join(self.root, name), os.O_RDONLY, os.ModePerm)
+// Open implements Repository.StatFS.Open.
+func (self DiskRepository) Open(name string) (file fs.File, err error) {
+	if err = IsValidTemplatePath(name); err != nil {
+		return
+	}
+	var fn = filepath.Join(self.root, name)
+	if !strings.HasPrefix(fn, self.root) {
+		return nil, fmt.Errorf("invalid filename %s", name)
+	}
+	return os.OpenFile(fn, os.O_RDONLY, os.ModePerm)
+}
+
+// Stat implements Repository.StatFS.Stat.
+func (self DiskRepository) Stat(name string) (file fs.FileInfo, err error) {
+	if err = IsValidTemplatePath(name); err != nil {
+		return
+	}
+	var fn = filepath.Join(self.root, name)
+	if !strings.HasPrefix(fn, self.root) {
+		return nil, fmt.Errorf("invalid filename %s", name)
+	}
+	return os.Stat(fn)
 }
 
 // LoadMetamap implements Repository.LoadMetamap.
@@ -113,3 +126,70 @@ func (self DiskRepository) LoadMetamap() (m Metamap, err error) {
 
 // Location implements Repository.Location.
 func (self DiskRepository) Location() string { return self.root }
+
+// NewTemplate implements Repository.NewTemplate.
+func (self DiskRepository) NewTemplate(path string) (meta *Metafile, err error) {
+
+	if err = IsValidTemplatePath(path); err != nil {
+		return
+	}
+
+	if err = self.NewDirectory(path); err != nil {
+		return
+	}
+
+	path = filepath.Join(self.root, path)
+	if !strings.HasPrefix(path, self.root) {
+		return nil, fmt.Errorf("invalid filename %s", path)
+	}
+
+	meta = &Metafile{
+		directory: path,
+	}
+	err = meta.Save()
+
+	return
+}
+
+// NewDirectory implements Repository.NewDirectory.
+func (self DiskRepository) NewDirectory(path string) (err error) {
+
+	if err = IsValidTemplatePath(path); err != nil {
+		return
+	}
+
+	path = filepath.Join(self.root, path)
+	if !strings.HasPrefix(path, self.root) {
+		return fmt.Errorf("invalid filename %s", path)
+	}
+
+	return os.MkdirAll(path, os.ModePerm)
+}
+
+// IsValidTemplatePath returns an error if the path is of invalid format.
+func IsValidTemplatePath(path string) (err error) {
+	if TemplatePathIsAbsolute(path) {
+		return fmt.Errorf("invalid template path: must be a path relative to repository.")
+	}
+	if strings.Contains(path, "#") {
+		return fmt.Errorf("invalid template path: must not name a group.")
+	}
+	return nil
+}
+
+// ParseTemplatePath parses the input string representing a Template path into
+// path and group parts which are delimited with first occurence of a hashtag.
+//
+// If the input is an empty string a "." path is returned and an empty group.
+func ParseTemplatePath(input string) (path, group string) {
+	if input == "" {
+		return ".", ""
+	}
+	path, group, _ = strings.Cut(input, "#")
+	return
+}
+
+// TemplatePathIsAbsolute returns true if the path begins with a path separator.
+func TemplatePathIsAbsolute(path string) bool {
+	return strings.HasPrefix(path, string(os.PathSeparator))
+}

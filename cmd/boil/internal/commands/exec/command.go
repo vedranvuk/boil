@@ -42,9 +42,9 @@ type Config struct {
 
 	// Vars are variables given by the user on command line.
 	// These variables will be available via .Vars template field.
-	Vars VarMap
+	Vars boil.Variables
 
-	// Config is the loaded program configuration.
+	// Configuration is the loaded program configuration.
 	Configuration *boil.Configuration
 }
 
@@ -78,8 +78,7 @@ type state struct {
 }
 
 // Run executes the Exec command configured by config.
-// If an error occurs it is returned and the operation may be considered as
-// failed. Run modifies the passed config.
+// If an error occurs it is returned and the operation may be considered failed.
 func Run(config *Config) (err error) {
 
 	var state = &state{
@@ -105,7 +104,7 @@ func Run(config *Config) (err error) {
 		}
 	}
 
-	if state.Repository, err = boil.OpenRepository(config.TemplatePath); err != nil {
+	if state.Repository, err = boil.OpenRepository(state.RepositoryPath); err != nil {
 		return fmt.Errorf("open repository: %w", err)
 	}
 
@@ -132,9 +131,11 @@ func Run(config *Config) (err error) {
 		return fmt.Errorf("enumerate template files for execution: %w", err)
 	}
 
-	if err = state.Templates.PresentPrompts(func(key, value string) error {
-		return state.Data.AddVar(key, value)
-	}); err != nil {
+	if err = state.Templates.ExecPreParseActions(); err != nil {
+		return fmt.Errorf("pre parse action failed: %w", err)
+	}
+
+	if err = state.Templates.PresentPrompts(state.Data.Vars); err != nil {
 		return fmt.Errorf("prompt user for input data: %w", err)
 	}
 
@@ -158,5 +159,15 @@ func Run(config *Config) (err error) {
 		}
 	}
 
-	return state.Templates.Execute(state)
+	if err = state.Templates.ExecPreExecuteActions(state.Data.Vars); err != nil {
+		return fmt.Errorf("pre execute action failed: %w", err)
+	}
+	if err = state.Templates.Execute(state); err != nil {
+		return
+	}
+	if err = state.Templates.ExecPostExecuteActions(state.Data.Vars); err != nil {
+		return fmt.Errorf("post execute action failed: %w", err)
+	}
+
+	return nil
 }

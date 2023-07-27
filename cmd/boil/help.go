@@ -61,10 +61,11 @@ var helpTopics = map[string]string{
 	"overview": overviewTopic,
 	"help":     helpTopic,
 	"exec":     execTopic,
+	"stdvars":  stdvarsTopic,
 }
 
 const (
-	overviewTopic = `Short primer on using boil.
+	overviewTopic = `Short primer on using boil
 
 Boil
 
@@ -217,16 +218,25 @@ executed into target directory.
 
 `
 
-	helpTopic = `Help command.
+	helpTopic = `Help command
 
 The help command provides extended help about a command.
 To get help about a specific command type 'boil help <command>'.
 `
 
-	execTopic = `Exec command.
+	execTopic = `Exec command
 	
 The exec command executes a template to a target directory replacing placeholder 
 variables in the process and executing a template using values provided on 
 command line or extracted from a go file.
+`
+
+	stdvarsTopic = `Standard variables
+
+The standard variables available to all template files during template execution
+including file name expansion are:
+
+	OutputDirectory	 Absolute path of the output directory.
+	TemplatePath     Template path as specified.
 `
 )

@@ -110,32 +110,28 @@ func produceTemplates(state *state, path string, templates *Templates) (err erro
 	return nil
 }
 
-// PromptAnswered is a callback called by Templates.PresentPrompts for each
-// prompt answered by the user where variable is the name of the variable the
-// prompt was for and the value is the value enetered. If the function returns
-// an error it is propagated back to the caller.
-type PromptAnswered func(variable, value string) error
-
 // PresentPrompts presents a prompt to the user on command line for each of
 // the prompts defined in all Templates in self, in order as they appear in
 // self, depth first.
 //
-// Method calls callback for each prompt and returns nil if all prompts were
-// successfully answered. If not, an error that the first answered callback
-// returned is returned. See PromptAnswered for more.
-func (self Templates) PresentPrompts(callback PromptAnswered) (err error) {
+// Values are stored in data under names of Variables they prompt for. If a
+// variable is already defined in Data (possibly via ommand line) the value is
+// not prompted for.
+func (self Templates) PresentPrompts(data boil.Variables) (err error) {
 	for _, template := range self {
 		for _, prompt := range template.Metafile.Prompts {
 			fmt.Printf("Enter value for %s:\n", prompt.Prompt)
 			var reader = bufio.NewReader(os.Stdin)
 			var input string
+			var exists bool
 			for {
+				if _, exists = data[prompt.Variable]; exists {
+					break
+				}
 				if input, err = reader.ReadString('\n'); err != nil {
 					return fmt.Errorf("prompt input: %w", err)
 				}
-				if err = callback(prompt.Variable, strings.TrimSpace(input)); err != nil {
-					return
-				}
+				data[prompt.Variable] = strings.TrimSpace(input)
 				break
 			}
 		}
@@ -178,6 +174,42 @@ func (self Templates) Validate(state *state) (err error) {
 	for _, template := range self {
 		if err = template.Metafile.Validate(state.Repository); err != nil {
 			break
+		}
+	}
+	return
+}
+
+// ExecPreParseActions executes all PreParse actions defined in all templates
+// in the order they are defined, depth first. The first error that occurs from
+// any action is returned and execution stopped or nil if everything successed.
+func (self Templates) ExecPreParseActions() (err error) {
+	for _, template := range self {
+		if err = template.Metafile.ExecPreParseActions(); err != nil {
+			return
+		}
+	}
+	return
+}
+
+// ExecPreExecuteActions executes all PreExecute actions defined in all templates
+// in the order they are defined, depth first. The first error that occurs from
+// any action is returned and execution stopped or nil if everything successed.
+func (self Templates) ExecPreExecuteActions(variables boil.Variables) (err error) {
+	for _, template := range self {
+		if err = template.Metafile.ExecPreExecuteActions(variables); err != nil {
+			return
+		}
+	}
+	return
+}
+
+// ExecPostExecuteActions executes all PostExecute actions defined in all templates
+// in the order they are defined, depth first. The first error that occurs from
+// any action is returned and execution stopped or nil if everything successed.
+func (self Templates) ExecPostExecuteActions(variables boil.Variables) (err error) {
+	for _, template := range self {
+		if err = template.Metafile.ExecPostExecuteActions(variables); err != nil {
+			return
 		}
 	}
 	return
