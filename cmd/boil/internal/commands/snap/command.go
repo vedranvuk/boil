@@ -1,12 +1,11 @@
 package snap
 
 import (
-	"bufio"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
 )
@@ -33,87 +32,110 @@ type Config struct {
 
 // Run executes the SNapshot command configured by config.
 // If an error occurs it is returned and the operation may be considered failed.
-func Run(config *Config) (err error) {
+func Run(config *Config) (err error) { return newState().Run(config) }
 
-	var (
-		repo  boil.Repository
-		meta  boil.Metamap
-		data  *boil.Metafile
-		src   string
-		finfo fs.FileInfo
-		files []string
-		dirs  []string
-	)
+func newState() *state { return &state{} }
+
+type state struct {
+	config   *Config
+	repo     boil.Repository
+	metamap  boil.Metamap
+	metafile *boil.Metafile
+	src      string
+	rootinfo fs.FileInfo
+	files    []string
+	dirs     []string
+}
+
+func (self *state) Run(config *Config) (err error) {
+
+	if self.config = config; self.config == nil {
+		return fmt.Errorf("nil config")
+	}
 
 	if err = boil.IsValidTemplatePath(config.TemplatePath); err != nil {
 		return err
 	}
 
-	if repo, err = boil.OpenRepository(config.Configuration.GetRepositoryPath()); err != nil {
+	if self.repo, err = boil.OpenRepository(config.Configuration.GetRepositoryPath()); err != nil {
 		return fmt.Errorf("open repository: %w", err)
 	}
 
-	if meta, err = repo.LoadMetamap(); err != nil {
+	if self.metamap, err = self.repo.LoadMetamap(); err != nil {
 		return fmt.Errorf("load metamap: %w", err)
 	}
 
-	if _, err = meta.Metafile(config.TemplatePath); err == nil && !config.Overwrite {
+	if _, err = self.metamap.Metafile(config.TemplatePath); err == nil && !config.Overwrite {
 		return fmt.Errorf("template %s already exists", config.TemplatePath)
 	}
 
-	if src, err = filepath.Abs(config.SourcePath); err != nil {
+	if self.src, err = filepath.Abs(config.SourcePath); err != nil {
 		return fmt.Errorf("get absolute source path: %w", err)
 	}
 
-	if finfo, err = os.Stat(src); err != nil {
+	if self.rootinfo, err = os.Stat(self.src); err != nil {
 		return fmt.Errorf("stat source: %w", err)
 	}
 
-	if finfo.IsDir() {
-		if err = filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
+	if self.rootinfo.IsDir() {
+		if err = filepath.WalkDir(self.src, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
 			if d.IsDir() {
-				dirs = append(dirs, path)
+				self.dirs = append(self.dirs, path)
 			} else {
-				files = append(files, path)
+				self.files = append(self.files, path)
 			}
 			return nil
 		}); err != nil {
 			return fmt.Errorf("enumerate source directory: %w", err)
 		}
 	} else {
-		files = append(files, src)
+		self.files = append(self.files, self.src)
+	}
+	if self.config.Configuration.Overrides.Verbose {
+		fmt.Printf("Source directories:\n")
+		for _, dir := range self.dirs {
+			fmt.Printf("%s\n", dir)
+		}
+		fmt.Println()
+		fmt.Printf("Source files:\n")
+		for _, file := range self.files {
+			fmt.Printf("%s\n", file)
+		}
+		fmt.Println()
 	}
 
-	if data, err = repo.NewTemplate(config.TemplatePath); err != nil {
+	if self.metafile, err = self.repo.NewTemplate(config.TemplatePath); err != nil {
 		return fmt.Errorf("create new template: %w", err)
 	}
-	data.Name = filepath.Base(config.TemplatePath)
+	self.metafile.Name = filepath.Base(config.TemplatePath)
 
-	return MetafileWizard(data)
-}
-
-// MetafileWizard prompts user to fill Metafile values.
-func MetafileWizard(file *boil.Metafile) error {
-
-	file.Description = promptValue("Enter template description:", ".*")
-	file.Author.Name = promptValue("Enter template author name:", ".*")
-
-	return file.Save()
-}
-
-func promptValue(prompt, regex string) string {
-	fmt.Printf("%s:\n", prompt)
-	var reader = bufio.NewReader(os.Stdin)
-	var input string
-	var err error
-	for {
-		if input, err = reader.ReadString('\n'); err != nil {
-			fmt.Println(err)
-			return ""
+	if config.Wizard {
+		if err = NewWizard(self).Execute(); err != nil {
+			return fmt.Errorf("execute wizard: %w", err)
 		}
-		return strings.TrimSpace(input)
+		if err = self.metafile.Save(); err != nil {
+			return
+		}
 	}
+
+	if !config.Overwrite {
+		for _, file := range self.files {
+			if _, err = self.repo.Stat(file); err == nil {
+				return fmt.Errorf("template file '%s' already exists", file)
+			} else {
+				if !errors.Is(err, fs.ErrNotExist) {
+					return fmt.Errorf("stat template file '%s': %w", file, err)
+				}
+			}
+		}
+	}
+
+	for _, file := range self.files {
+		_ = file
+	}
+
+	return
 }

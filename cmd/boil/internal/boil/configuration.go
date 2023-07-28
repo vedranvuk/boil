@@ -155,6 +155,12 @@ func (self *Configuration) LoadOrCreate() (err error) {
 	if err = self.LoadFromFile(fn); err != nil {
 		err = fmt.Errorf("load config file '%s': %w", fn, err)
 	}
+	if _, err = os.Stat(self.RepositoryPath); err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("stat default config: %w", err)
+		}
+		return os.MkdirAll(self.RepositoryPath, os.ModePerm)
+	}
 	return nil
 }
 

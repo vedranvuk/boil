@@ -71,24 +71,15 @@ type Metafile struct {
 	// Template with the "snap" command.
 	Directories []string `json:"directories,omitempty"`
 
-	// Groups is a slice of Template Group definitions that may be executed
-	// with the Template the metafile describes, as part of that Template.
+	// Prompts is a list of prompts to present to the user before Template
+	// execution via stdin to input values for variables the prompts define.
 	//
-	// If the Template that this metafile describes contains other Templates
-	// in any of its subdirectories, at any depths, one or more of those child
-	// Templates may be combined into a named Group and addressed from it by a
-	// path relative to this template.
+	// Along with manually defining variables with the --var flag, a Template
+	// can prompt the user for specific variables that the Template file needs.
 	//
-	// A Group can be executed along with the Template that defines it as part
-	// of that template. This allows for defining segmented and multilayered
-	// permutations of templates organized in a parent-child manner.
-	//
-	// A Group template is addressed by its path in a manner that the last
-	// element of the path that matches Metafile.Name is instead replaced with
-	// the name of the Group. So for instance, if a template 'apps/versatileapp'
-	// defines groups 'base', and 'complete', to execute the 'base' Group the
-	// path would be 'apps/base'.
-	Groups []*Group `json:"groups,omitempty"`
+	// Prompts can each define a regular expression to use for input validation.
+	// A failed validation will then re-prompt the user for value.
+	Prompts []*Prompt
 
 	// Actions are groups of definitions of external actions to perform at
 	// various stages of Template execution. In each Action group
@@ -121,15 +112,24 @@ type Metafile struct {
 		PostExecute Actions `json:"postExecute,omitempty"`
 	} `json:"actions,omitempty"`
 
-	// Prompts is a list of prompts to present to the user before Template
-	// execution via stdin to input values for variables the prompts define.
+	// Groups is a slice of Template Group definitions that may be executed
+	// with the Template the metafile describes, as part of that Template.
 	//
-	// Along with manually defining variables with the --var flag, a Template
-	// can prompt the user for specific variables that the Template file needs.
+	// If the Template that this metafile describes contains other Templates
+	// in any of its subdirectories, at any depths, one or more of those child
+	// Templates may be combined into a named Group and addressed from it by a
+	// path relative to this template.
 	//
-	// Prompts can each define a regular expression to use for input validation.
-	// A failed validation will then re-prompt the user for value.
-	Prompts []*Prompt
+	// A Group can be executed along with the Template that defines it as part
+	// of that template. This allows for defining segmented and multilayered
+	// permutations of templates organized in a parent-child manner.
+	//
+	// A Group template is addressed by its path in a manner that the last
+	// element of the path that matches Metafile.Name is instead replaced with
+	// the name of the Group. So for instance, if a template 'apps/versatileapp'
+	// defines groups 'base', and 'complete', to execute the 'base' Group the
+	// path would be 'apps/base'.
+	Groups []*Group `json:"groups,omitempty"`
 
 	// directory is the directory from which Metafile was loaded from.
 	directory string
@@ -193,10 +193,10 @@ type Group struct {
 type Prompt struct {
 	// Variable is the name of the Variable this prompt will ask value for.
 	Variable string `json:"variable,omitempty"`
-	// Prompt is the prompt text presented to the user when asking for value.
+	// Description is the prompt text presented to the user when asking for value.
 	//
-	// On stdin the format will be: "Enter a value for <Prompt>".
-	Prompt string `json:"prompt,omitempty"`
+	// On stdin the format will be: "Enter a value for <Description>".
+	Description string `json:"prompt,omitempty"`
 	// RegEx is the regular expression to use to validate the input string.
 	// If RegEx is not set no validation will be performed on input in addition
 	// to an empty value being accepted as a value.

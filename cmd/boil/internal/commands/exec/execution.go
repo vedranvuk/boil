@@ -120,7 +120,7 @@ func produceTemplates(state *state, path string, templates *Templates) (err erro
 func (self Templates) PresentPrompts(data boil.Variables) (err error) {
 	for _, template := range self {
 		for _, prompt := range template.Metafile.Prompts {
-			fmt.Printf("Enter value for %s:\n", prompt.Prompt)
+			fmt.Printf("Enter value for %s:\n", prompt.Description)
 			var reader = bufio.NewReader(os.Stdin)
 			var input string
 			var exists bool

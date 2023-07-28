@@ -23,10 +23,16 @@ type Repository interface {
 	NewTemplate(string) (*Metafile, error)
 
 	// NewDirectory creates a new directory at the specified path relative to
-	// the repository root and returns nil on success or if the target directory
-	// already exists. If the path is invalid or other error occurs it is
-	// returned.
+	// the repository root and returns nil on success or error if the target
+	// directory already exists. If the path is invalid or other error occurs it
+	// is returned.
 	NewDirectory(string) error
+
+	// NewFile creates a new file at the specified path relative to the
+	// repository root and returns nil on success of error if the target file
+	// already exists. if the path is invalid or other error occurs it is
+	// returned.
+	NewFile(string) (fs.File, error)
 
 	// LoadMetamap loads metadata from root directory recursively recursively
 	// walking all child subdirectories and returns it or returns a descriptive
@@ -164,6 +170,21 @@ func (self DiskRepository) NewDirectory(path string) (err error) {
 	}
 
 	return os.MkdirAll(path, os.ModePerm)
+}
+
+// NewFile implements Repository.NewFile.
+func (self DiskRepository) NewFile(path string) (file fs.File, err error) {
+
+	if err = IsValidTemplatePath(path); err != nil {
+		return
+	}
+
+	path = filepath.Join(self.root, path)
+	if !strings.HasPrefix(path, self.root) {
+		return nil, fmt.Errorf("invalid filename %s", path)
+	}
+
+	return os.OpenFile(path, os.O_CREATE|os.O_EXCL, os.ModePerm)
 }
 
 // IsValidTemplatePath returns an error if the path is of invalid format.
