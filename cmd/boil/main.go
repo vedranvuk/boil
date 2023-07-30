@@ -11,6 +11,7 @@ import (
 	"github.com/vedranvuk/boil/cmd/boil/internal/commands/exec"
 	"github.com/vedranvuk/boil/cmd/boil/internal/commands/info"
 	"github.com/vedranvuk/boil/cmd/boil/internal/commands/list"
+	"github.com/vedranvuk/boil/cmd/boil/internal/commands/newt"
 	"github.com/vedranvuk/boil/cmd/boil/internal/commands/snap"
 	"github.com/vedranvuk/cmdline"
 )
@@ -120,6 +121,22 @@ func main() {
 				Handler: func(c cmdline.Context) error {
 					return list.Run(&list.Config{
 						Prefix:        c.RawValues("prefix").First(),
+						Configuration: programConfig,
+					})
+				},
+			},
+			{
+				Name: "new",
+				Help: "Create a new blank template and edit it.",
+				Options: cmdline.Options{
+					&cmdline.Indexed{
+						Name: "template-path",
+						Help: "Name of the template to create.",
+					},
+				},
+				Handler: func(c cmdline.Context) error {
+					return newt.Run(&newt.Config{
+						TemplatePath:  c.RawValues("template-path").First(),
 						Configuration: programConfig,
 					})
 				},

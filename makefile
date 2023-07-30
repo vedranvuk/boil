@@ -1,3 +1,3 @@
 install:
-	go build ./cmd/boil
+	go build -o=./cmd/boil ./cmd/boil
 	go install ./cmd/boil

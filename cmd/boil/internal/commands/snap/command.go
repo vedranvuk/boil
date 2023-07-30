@@ -87,6 +87,9 @@ func (self *state) Run(config *Config) (err error) {
 			if path = strings.TrimPrefix(strings.TrimPrefix(path, self.source), "/"); path == "" {
 				return nil
 			}
+			if strings.ToLower(path) == boil.MetafileName {
+				return nil
+			}
 			if d.IsDir() {
 				self.metafile.Directories = append(self.metafile.Directories, path)
 			} else {
@@ -105,7 +108,7 @@ func (self *state) Run(config *Config) (err error) {
 
 	// Template wizard
 	if config.Wizard {
-		if err = NewWizard(self).Execute(); err != nil {
+		if err = boil.NewWizard(self.config.Configuration, self.metafile).Execute(); err != nil {
 			return fmt.Errorf("execute wizard: %w", err)
 		}
 	}
@@ -134,7 +137,7 @@ func (self *state) Run(config *Config) (err error) {
 		self.metafile.Print()
 	}
 
-	if err = self.metafile.Save(); err != nil {
+	if err = self.repo.SaveTemplate(self.metafile); err != nil {
 		return
 	}
 

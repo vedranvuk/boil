@@ -82,6 +82,17 @@
 				"-w",
 				"-z"
 			]
+		},
+		{
+			"name": "boil new test",
+			"type": "go",
+			"request": "launch",
+			"mode": "auto",
+			"program": "${workspaceFolder}/cmd/boil",
+			"args": [
+				"new",
+				"test"
+			]
 		}
 	]
 }

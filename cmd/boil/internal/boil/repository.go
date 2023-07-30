@@ -1,9 +1,11 @@
 package boil
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,6 +29,9 @@ type Repository interface {
 	// metadata for modification and a nil error. If a template at path already
 	// exists or some other error occurs it is returned.
 	NewTemplate(string) (*Metafile, error)
+
+	// SaveTemplate saves a template metafile to repository.
+	SaveTemplate(*Metafile) error
 
 	// NewDirectory creates a new directory at the specified path relative to
 	// the repository root and returns nil on success or error if the target
@@ -149,21 +154,30 @@ func (self DiskRepository) NewTemplate(path string) (meta *Metafile, err error) 
 		return
 	}
 
-	if err = self.NewDirectory(path); err != nil {
-		return
-	}
-
-	path = filepath.Join(self.root, path)
-	if !strings.HasPrefix(path, self.root) {
+	if path = filepath.Join(self.root, path); !strings.HasPrefix(path, self.root) {
 		return nil, fmt.Errorf("invalid filename %s", path)
 	}
 
 	meta = NewMetafile()
 	meta.Name = filepath.Base(path)
 
-	err = meta.Save()
-
 	return
+}
+
+// SaveTemplate implements
+func (self DiskRepository) SaveTemplate(metafile *Metafile) (err error) {
+	var buf []byte
+	if buf, err = json.MarshalIndent(metafile, "", "\t"); err != nil {
+		return fmt.Errorf("marshal metafile: %w", err)
+	}
+	if err = self.NewDirectory(metafile.Name); err != nil {
+		return
+	}
+	var path = filepath.Join(self.root, metafile.Name, MetafileName)
+	if err = ioutil.WriteFile(path, buf, os.ModePerm); err != nil {
+		return fmt.Errorf("write metafile: %w", err)
+	}
+	return nil
 }
 
 // NewDirectory implements Repository.NewDirectory.

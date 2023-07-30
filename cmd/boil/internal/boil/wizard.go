@@ -1,21 +1,21 @@
-package snap
+package boil
 
 import (
 	"os"
-
-	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
 )
 
 // Wizard is the Snap command wizard.
 type Wizard struct {
-	state *state
+	config   *Configuration
+	metafile *Metafile
 	*Interrogator
 }
 
 // NewWizard returns a new *Wizard.
-func NewWizard(state *state) *Wizard {
+func NewWizard(config *Configuration, metafile *Metafile) *Wizard {
 	return &Wizard{
-		state:        state,
+		config:       config,
+		metafile:     metafile,
 		Interrogator: NewInterrogator(os.Stdin, os.Stdout),
 	}
 }
@@ -29,36 +29,36 @@ func (self *Wizard) Execute() (err error) {
 	self.Printf("New template wizard\n\n")
 
 	self.Printf("Template description:\n")
-	if self.state.metafile.Description, err = self.AskValue("", ".*"); err != nil {
+	if self.metafile.Description, err = self.AskValue("", ".*"); err != nil {
 		return
 	}
 
 	self.Printf("Template author name:\n")
-	if self.state.metafile.Author.Name, err = self.AskValue(
-		self.state.config.Configuration.DefaultAuthor.Name,
+	if self.metafile.Author.Name, err = self.AskValue(
+		self.config.DefaultAuthor.Name,
 		".*",
 	); err != nil {
 		return err
 	}
 
 	self.Printf("Template author email:\n")
-	if self.state.metafile.Author.Email, err = self.AskValue(
-		self.state.config.Configuration.DefaultAuthor.Email,
+	if self.metafile.Author.Email, err = self.AskValue(
+		self.config.DefaultAuthor.Email,
 		".*",
 	); err != nil {
 		return
 	}
 
 	self.Printf("Template author homepage:\n")
-	if self.state.metafile.Author.Homepage, err = self.AskValue(
-		self.state.config.Configuration.DefaultAuthor.Homepage,
+	if self.metafile.Author.Homepage, err = self.AskValue(
+		self.config.DefaultAuthor.Homepage,
 		".*",
 	); err != nil {
 		return
 	}
 
 	self.Printf("Template version:\n")
-	if self.state.metafile.Version, err = self.AskValue(
+	if self.metafile.Version, err = self.AskValue(
 		"1.0.0",
 		".*",
 	); err != nil {
@@ -66,7 +66,7 @@ func (self *Wizard) Execute() (err error) {
 	}
 
 	self.Printf("Template URL:\n")
-	if self.state.metafile.URL, err = self.AskValue(
+	if self.metafile.URL, err = self.AskValue(
 		"http://",
 		".*",
 	); err != nil {
@@ -77,7 +77,7 @@ func (self *Wizard) Execute() (err error) {
 	if truth, err = self.AskYesNo(); err != nil {
 		return err
 	} else if truth {
-		if self.state.metafile.Prompts, err = self.definePrompts(); err != nil {
+		if self.metafile.Prompts, err = self.definePrompts(); err != nil {
 			return
 		}
 	}
@@ -86,7 +86,7 @@ func (self *Wizard) Execute() (err error) {
 	if truth, err = self.AskYesNo(); err != nil {
 		return err
 	} else if truth {
-		if err = self.defineActions(&self.state.metafile.Actions.PreParse); err != nil {
+		if err = self.defineActions(&self.metafile.Actions.PreParse); err != nil {
 			return
 		}
 	}
@@ -95,7 +95,7 @@ func (self *Wizard) Execute() (err error) {
 	if truth, err = self.AskYesNo(); err != nil {
 		return err
 	} else if truth {
-		if err = self.defineActions(&self.state.metafile.Actions.PreExecute); err != nil {
+		if err = self.defineActions(&self.metafile.Actions.PreExecute); err != nil {
 			return
 		}
 	}
@@ -104,7 +104,7 @@ func (self *Wizard) Execute() (err error) {
 	if truth, err = self.AskYesNo(); err != nil {
 		return err
 	} else if truth {
-		if err = self.defineActions(&self.state.metafile.Actions.PostExecute); err != nil {
+		if err = self.defineActions(&self.metafile.Actions.PostExecute); err != nil {
 			return
 		}
 	}
@@ -114,15 +114,15 @@ func (self *Wizard) Execute() (err error) {
 	return
 }
 
-func (self *Wizard) definePrompts() (result []*boil.Prompt, err error) {
+func (self *Wizard) definePrompts() (result []*Prompt, err error) {
 
 	var (
-		prompt *boil.Prompt
+		prompt *Prompt
 		truth  bool
 	)
 
 	for {
-		prompt = new(boil.Prompt)
+		prompt = new(Prompt)
 
 		self.Printf("New Prompt:\n")
 
@@ -155,10 +155,10 @@ func (self *Wizard) definePrompts() (result []*boil.Prompt, err error) {
 	return
 }
 
-func (self *Wizard) defineActions(actions *boil.Actions) (err error) {
+func (self *Wizard) defineActions(actions *Actions) (err error) {
 
 	var (
-		action *boil.Action
+		action *Action
 		truth  bool
 	)
 
@@ -180,9 +180,9 @@ func (self *Wizard) defineActions(actions *boil.Actions) (err error) {
 	return
 }
 
-func (self *Wizard) defineAction() (action *boil.Action, err error) {
+func (self *Wizard) defineAction() (action *Action, err error) {
 
-	action = new(boil.Action)
+	action = new(Action)
 
 	var truth bool
 

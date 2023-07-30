@@ -61,7 +61,7 @@ type Metafile struct {
 	// get expended to actual values during Template execution.
 	// A placeholder is defined with a "$" prefix, immediately followed by the
 	// name of a Variable.
-	Files []string `json:"files,omitempty"`
+	Files []string `json:"files"`
 
 	// Directories is a list of directories to create in the target directory.
 	// Placeholders are supported like with Files. Directories defined in this
@@ -69,7 +69,7 @@ type Metafile struct {
 	// files defined by Files or if they exist phisically in the Template
 	// directory. They will be created in the template however when creating a
 	// Template with the "snap" command.
-	Directories []string `json:"directories,omitempty"`
+	Directories []string `json:"directories"`
 
 	// Prompts is a list of prompts to present to the user before Template
 	// execution via stdin to input values for variables the prompts define.
@@ -79,7 +79,7 @@ type Metafile struct {
 	//
 	// Prompts can each define a regular expression to use for input validation.
 	// A failed validation will then re-prompt the user for value.
-	Prompts []*Prompt
+	Prompts []*Prompt `json:"prompts,imitempty"`
 
 	// Actions are groups of definitions of external actions to perform at
 	// various stages of Template execution. In each Action group
@@ -212,18 +212,6 @@ func LoadMetafileFromDir(dir string) (metadata *Metafile, err error) {
 		return nil, fmt.Errorf("unmarshal metafile: %w", err)
 	}
 	return
-}
-
-// Save saves self to self.directory or returns an error.
-func (self *Metafile) Save() (err error) {
-	var buf []byte
-	if buf, err = json.MarshalIndent(self, "", "\t"); err != nil {
-		return fmt.Errorf("marshal metafile: %w", err)
-	}
-	if err = ioutil.WriteFile(filepath.Join(self.directory, MetafileName), buf, os.ModePerm); err != nil {
-		return fmt.Errorf("write metafile: %w", err)
-	}
-	return nil
 }
 
 // Author defines an author of a Template or a Repository.

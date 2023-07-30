@@ -1,4 +1,4 @@
-package snap
+package boil
 
 import (
 	"bufio"
