@@ -1,0 +1,20 @@
+{
+	"name": "snapshot",
+	"author": {
+		"name": "Vedran"
+	},
+	"files": [
+		"README.md",
+		"boil.json",
+		"cmd/app/main.go",
+		"pkg/interface.go"
+	],
+	"directories": [
+		"cmd",
+		"cmd/app",
+		"pkg",
+		"pkg/app"
+	],
+	"Prompts": null,
+	"actions": {}
+}

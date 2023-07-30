@@ -44,7 +44,6 @@ func handleHelp(c cmdline.Context) error {
 	}
 
 	// Overview
-	fmt.Println()
 	cmdline.PrintConfig(os.Stdout, cmdlineConfig)
 	return nil
 }

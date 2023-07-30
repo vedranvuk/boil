@@ -1,7 +1,6 @@
 package snap
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
@@ -23,54 +22,58 @@ func NewWizard(state *state) *Wizard {
 
 func (self *Wizard) Execute() (err error) {
 
-	var truth bool
+	var (
+		truth bool
+	)
 
-	fmt.Fprintf(self.rw, "Template description:\n")
-	if self.state.metafile.Description, err = self.AskValue(".*", ""); err != nil {
+	self.Printf("New template wizard\n\n")
+
+	self.Printf("Template description:\n")
+	if self.state.metafile.Description, err = self.AskValue("", ".*"); err != nil {
 		return
 	}
 
-	fmt.Fprintf(self.rw, "Template author name:\n")
+	self.Printf("Template author name:\n")
 	if self.state.metafile.Author.Name, err = self.AskValue(
-		".*",
 		self.state.config.Configuration.DefaultAuthor.Name,
+		".*",
 	); err != nil {
 		return err
 	}
 
-	fmt.Fprintf(self.rw, "Template author email:\n")
+	self.Printf("Template author email:\n")
 	if self.state.metafile.Author.Email, err = self.AskValue(
-		".*",
 		self.state.config.Configuration.DefaultAuthor.Email,
+		".*",
 	); err != nil {
 		return
 	}
 
-	fmt.Fprintf(self.rw, "Template author homepage:\n")
+	self.Printf("Template author homepage:\n")
 	if self.state.metafile.Author.Homepage, err = self.AskValue(
-		".*",
 		self.state.config.Configuration.DefaultAuthor.Homepage,
+		".*",
 	); err != nil {
 		return
 	}
 
-	fmt.Fprintf(self.rw, "Template version:\n")
+	self.Printf("Template version:\n")
 	if self.state.metafile.Version, err = self.AskValue(
-		".*",
 		"1.0.0",
-	); err != nil {
-		return
-	}
-
-	fmt.Fprintf(self.rw, "Template URL:\n")
-	if self.state.metafile.URL, err = self.AskValue(
 		".*",
-		"http://",
 	); err != nil {
 		return
 	}
 
-	fmt.Fprintf(self.rw, "Would you like to define some Prompts?\n")
+	self.Printf("Template URL:\n")
+	if self.state.metafile.URL, err = self.AskValue(
+		"http://",
+		".*",
+	); err != nil {
+		return
+	}
+
+	self.Printf("Would you like to define some Prompts?\n")
 	if truth, err = self.AskYesNo(); err != nil {
 		return err
 	} else if truth {
@@ -79,32 +82,34 @@ func (self *Wizard) Execute() (err error) {
 		}
 	}
 
-	fmt.Fprintf(self.rw, "Would you like to define some Pre-Parse actions?\n")
+	self.Printf("Would you like to define some Pre-Parse actions?\n")
 	if truth, err = self.AskYesNo(); err != nil {
 		return err
 	} else if truth {
-		if err = self.defineActions(self.state.metafile.Actions.PreParse); err != nil {
+		if err = self.defineActions(&self.state.metafile.Actions.PreParse); err != nil {
 			return
 		}
 	}
 
-	fmt.Fprintf(self.rw, "Would you like to define some Pre-Execute actions?\n")
+	self.Printf("Would you like to define some Pre-Execute actions?\n")
 	if truth, err = self.AskYesNo(); err != nil {
 		return err
 	} else if truth {
-		if err = self.defineActions(self.state.metafile.Actions.PreExecute); err != nil {
+		if err = self.defineActions(&self.state.metafile.Actions.PreExecute); err != nil {
 			return
 		}
 	}
 
-	fmt.Fprintf(self.rw, "Would you like to define some Post-Execute actions?\n")
+	self.Printf("Would you like to define some Post-Execute actions?\n")
 	if truth, err = self.AskYesNo(); err != nil {
 		return err
 	} else if truth {
-		if err = self.defineActions(self.state.metafile.Actions.PostExecute); err != nil {
+		if err = self.defineActions(&self.state.metafile.Actions.PostExecute); err != nil {
 			return
 		}
 	}
+
+	self.Printf("Template defined.\n")
 
 	return
 }
@@ -119,24 +124,26 @@ func (self *Wizard) definePrompts() (result []*boil.Prompt, err error) {
 	for {
 		prompt = new(boil.Prompt)
 
-		fmt.Fprintf(self.rw, "Enter Variable name:\n")
+		self.Printf("New Prompt:\n")
+
+		self.Printf("Variable name:\n")
 		if prompt.Variable, err = self.AskValue("", ".*"); err != nil {
 			return
 		}
 
-		fmt.Fprintf(self.rw, "Enter Variable description:\n")
+		self.Printf("Variable description:\n")
 		if prompt.Description, err = self.AskValue("", ".*"); err != nil {
 			return
 		}
 
-		fmt.Fprintf(self.rw, "Enter regular expression to use for checking value:\n")
+		self.Printf("Value validation Regular Expression:\n")
 		if prompt.RegExp, err = self.AskValue(".*", ".*"); err != nil {
 			return
 		}
 
 		result = append(result, prompt)
 
-		fmt.Fprintf(self.rw, "Would you like to define another Prompt?\n")
+		self.Printf("Would you like to define another Prompt?\n")
 		if truth, err = self.AskYesNo(); err != nil {
 			return
 		} else if truth {
@@ -148,7 +155,7 @@ func (self *Wizard) definePrompts() (result []*boil.Prompt, err error) {
 	return
 }
 
-func (self *Wizard) defineActions(actions boil.Actions) (err error) {
+func (self *Wizard) defineActions(actions *boil.Actions) (err error) {
 
 	var (
 		action *boil.Action
@@ -159,9 +166,9 @@ func (self *Wizard) defineActions(actions boil.Actions) (err error) {
 		if action, err = self.defineAction(); err != nil {
 			return
 		}
-		actions = append(actions, action)
+		*actions = append(*actions, action)
 
-		fmt.Fprintf(self.rw, "Would you like to define another Action?\n")
+		self.Printf("Would you like to define another Action?\n")
 		if truth, err = self.AskYesNo(); err != nil {
 			return err
 		} else if truth {
@@ -179,29 +186,29 @@ func (self *Wizard) defineAction() (action *boil.Action, err error) {
 
 	var truth bool
 
-	fmt.Printf("Define a new Action:\n")
+	self.Printf("New Action:\n")
 
-	fmt.Fprintf(self.rw, "Description:\n")
+	self.Printf("Description:\n")
 	if action.Description, err = self.AskValue("", ".*"); err != nil {
 		return
 	}
 
-	fmt.Fprintf(self.rw, "Program:\n")
+	self.Printf("Program:\n")
 	if action.Program, err = self.AskValue("", ".*"); err != nil {
 		return
 	}
 
-	fmt.Fprintf(self.rw, "Working directory:\n")
+	self.Printf("Working directory:\n")
 	if action.WorkDir, err = self.AskValue("", ".*"); err != nil {
 		return
 	}
-	
-	fmt.Fprintf(self.rw, "Description:\n")
+
+	self.Printf("Arguments:\n")
 	if action.Arguments, err = self.AskList(); err != nil {
 		return
 	}
 
-	fmt.Fprintf(self.rw, "Would you like to define some environment variables?\n")
+	self.Printf("Would you like to define some environment variables?\n")
 	if truth, err = self.AskYesNo(); err != nil {
 		return
 	} else if truth {
@@ -210,12 +217,7 @@ func (self *Wizard) defineAction() (action *boil.Action, err error) {
 		}
 	}
 
-	fmt.Fprintf(self.rw, "Environment variables:\n")
-	if action.Environment, err = self.defineEnvVariables(); err != nil {
-		return
-	}
-
-	fmt.Fprintf(self.rw, "Don't break the execution if action fails:\n")
+	self.Printf("Don't break the execution if action fails:\n")
 	if truth, err = self.AskYesNo(); err != nil {
 		return
 	} else if truth {
@@ -230,7 +232,7 @@ func (self *Wizard) defineEnvVariables() (result map[string]string, err error) {
 	var key, val string
 	result = make(map[string]string)
 
-	fmt.Fprintf(self.rw, "Environment variables:\n")
+	self.Printf("Environment variables:\n")
 	for {
 		if key, val, err = self.AskVariable(); err != nil {
 			return

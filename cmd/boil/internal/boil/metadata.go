@@ -135,6 +135,65 @@ type Metafile struct {
 	directory string
 }
 
+// NewMetafile returns a new metfile.
+func NewMetafile() *Metafile { return &Metafile{Author: &Author{}} }
+
+func (self *Metafile) Print() {
+	var wr = tabwriter.NewWriter(os.Stdout, 2, 2, 2, 32, 0)
+	fmt.Fprintf(wr, "Name:\t%s\n", self.Name)
+	fmt.Fprintf(wr, "Description:\t%s\n", self.Description)
+	fmt.Fprintf(wr, "Author Name:\t%s\n", self.Author.Name)
+	fmt.Fprintf(wr, "Author Email:\t%s\n", self.Author.Email)
+	fmt.Fprintf(wr, "Author Homepage:\t%s\n", self.Author.Homepage)
+	fmt.Fprintf(wr, "Version:\t%s\n", self.Version)
+	fmt.Fprintf(wr, "URL:\t%s\n", self.URL)
+	fmt.Fprintf(wr, "Directories:\t\n")
+	for _, dir := range self.Directories {
+		fmt.Fprintf(wr, "\t%s\n", dir)
+	}
+	fmt.Fprintf(wr, "Files:\t\n")
+	for _, file := range self.Files {
+		fmt.Fprintf(wr, "\t%s\n", file)
+	}
+	fmt.Fprintf(wr, "Prompts:\t\n")
+	for _, prompt := range self.Prompts {
+		fmt.Fprintf(wr, "Variable:\t%s\n", prompt.Variable)
+		fmt.Fprintf(wr, "Description:\t%s\n", prompt.Description)
+		fmt.Fprintf(wr, "RegExp:\t%s\n", prompt.RegExp)
+	}
+	fmt.Fprintf(wr, "PreParse Actions:\t\n")
+	for _, action := range self.Actions.PreParse {
+		fmt.Fprintf(wr, "Description:\t%s\n", action.Description)
+		fmt.Fprintf(wr, "Program:\t%s\n", action.Program)
+		fmt.Fprintf(wr, "Arguments:\t%v\n", action.Arguments)
+		fmt.Fprintf(wr, "WorkDir:\t%s\n", action.WorkDir)
+		fmt.Fprintf(wr, "NoFailt%t\n", action.NoFail)
+	}
+	fmt.Fprintf(wr, "PreExecute Actions:\t\n")
+	for _, action := range self.Actions.PreExecute {
+		fmt.Fprintf(wr, "Description:\t%s\n", action.Description)
+		fmt.Fprintf(wr, "Program:\t%s\n", action.Program)
+		fmt.Fprintf(wr, "Arguments:\t%v\n", action.Arguments)
+		fmt.Fprintf(wr, "WorkDir:\t%s\n", action.WorkDir)
+		fmt.Fprintf(wr, "NoFailt%t\n", action.NoFail)
+	}
+	fmt.Fprintf(wr, "PostExecute Actions:\t\n")
+	for _, action := range self.Actions.PostExecute {
+		fmt.Fprintf(wr, "Description:\t%s\n", action.Description)
+		fmt.Fprintf(wr, "Program:\t%s\n", action.Program)
+		fmt.Fprintf(wr, "Arguments:\t%v\n", action.Arguments)
+		fmt.Fprintf(wr, "WorkDir:\t%s\n", action.WorkDir)
+		fmt.Fprintf(wr, "NoFailt%t\n", action.NoFail)
+	}
+	fmt.Fprintf(wr, "Groups:\t\n")
+	for _, group := range self.Groups {
+		fmt.Fprintf(wr, "Name:\t%s\n", group.Name)
+		fmt.Fprintf(wr, "Description:\t%s\n", group.Description)
+		fmt.Fprintf(wr, "Templates:\t%v\n", group.Templates)
+	}
+	wr.Flush()
+}
+
 // errNoMetadata is returned by LoadMetadataFromDir if a metadata file
 // does not exist in specified directory.
 var errNoMetadata = errors.New("no metadata found")
@@ -158,7 +217,7 @@ func LoadMetafileFromDir(dir string) (metadata *Metafile, err error) {
 // Save saves self to self.directory or returns an error.
 func (self *Metafile) Save() (err error) {
 	var buf []byte
-	if buf, err = json.Marshal(self); err != nil {
+	if buf, err = json.MarshalIndent(self, "", "\t"); err != nil {
 		return fmt.Errorf("marshal metafile: %w", err)
 	}
 	if err = ioutil.WriteFile(filepath.Join(self.directory, MetafileName), buf, os.ModePerm); err != nil {

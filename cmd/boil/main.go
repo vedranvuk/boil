@@ -33,7 +33,8 @@ func main() {
 	}
 	// Command line configuration.
 	cmdlineConfig = &cmdline.Config{
-		Arguments: os.Args[1:],
+		Arguments:    os.Args[1:],
+		NoAssignment: true,
 		Globals: cmdline.Options{
 			&cmdline.Boolean{
 				LongName:  "help",
@@ -46,6 +47,10 @@ func main() {
 				Help:        "Enable verbose output.",
 				MappedValue: &programConfig.Overrides.Verbose,
 			},
+			&cmdline.Boolean{
+				LongName: "version",
+				Help:     "Show program version and exit.",
+			},
 			&cmdline.Optional{
 				LongName:    "config",
 				ShortName:   "c",
@@ -57,10 +62,6 @@ func main() {
 				ShortName:   "r",
 				Help:        "Override directory of repository to use.",
 				MappedValue: &programConfig.Overrides.RepositoryPath,
-			},
-			&cmdline.Boolean{
-				LongName: "version",
-				Help:     "Show program version and exit.",
 			},
 		},
 		GlobalExclusivityGroups: []cmdline.ExclusivityGroup{
@@ -92,9 +93,8 @@ func main() {
 		},
 		Commands: cmdline.Commands{
 			{
-				Name:    "help",
-				Help:    "Show help, optionally for a specific topic.",
-				Handler: handleHelp,
+				Name: "help",
+				Help: "Show help, optionally for a specific topic.",
 				Options: cmdline.Options{
 					&cmdline.Boolean{
 						LongName:  "list-topics",
@@ -106,39 +106,31 @@ func main() {
 						Help: "Help topic to display.",
 					},
 				},
+				Handler: handleHelp,
 			},
 			{
 				Name: "list",
 				Help: "List templates, optionally starting from specific subdirectory.",
-				Handler: func(c cmdline.Context) error {
-					return list.Run(&list.Config{
-						Prefix:        c.RawValues("prefix").First(),
-						Configuration: programConfig,
-					})
-				},
 				Options: cmdline.Options{
 					&cmdline.Variadic{
 						Name: "prefix",
 						Help: "Path prefix at which to start listing.",
 					},
 				},
+				Handler: func(c cmdline.Context) error {
+					return list.Run(&list.Config{
+						Prefix:        c.RawValues("prefix").First(),
+						Configuration: programConfig,
+					})
+				},
 			},
 			{
 				Name: "snap",
 				Help: "Create a new template from a source directory or file.",
-				Handler: func(c cmdline.Context) error {
-					return snap.Run(&snap.Config{
-						TemplatePath:  c.RawValues("template-path").First(),
-						Wizard:        c.IsParsed("wizard"),
-						Overwrite:     c.IsParsed("overwrite"),
-						SourcePath:    c.RawValues("source-path").First(),
-						Configuration: programConfig,
-					})
-				},
 				Options: cmdline.Options{
 					&cmdline.Indexed{
 						Name: "template-path",
-						Help: "Path of the Template to be executed.",
+						Help: "Path of the Template to be created.",
 					},
 					&cmdline.Boolean{
 						LongName:  "wizard",
@@ -155,53 +147,51 @@ func main() {
 						Help: "Source directory or file path.",
 					},
 				},
+				Handler: func(c cmdline.Context) error {
+					return snap.Run(&snap.Config{
+						TemplatePath:  c.RawValues("template-path").First(),
+						Wizard:        c.IsParsed("wizard"),
+						Overwrite:     c.IsParsed("overwrite"),
+						SourcePath:    c.RawValues("source-path").First(),
+						Configuration: programConfig,
+					})
+				},
 			},
 			{
 				Name: "info",
 				Help: "Show information about a template",
+				Options: cmdline.Options{
+					&cmdline.Indexed{
+						Name: "template-path",
+						Help: "Path of the template to show info for.",
+					},
+				},
 				Handler: func(c cmdline.Context) error {
-					return info.Run(&info.Config{})
+					return info.Run(&info.Config{
+						TemplatePath:  c.RawValues("template-path").First(),
+						Configuration: programConfig,
+					})
 				},
 			},
 			{
 				Name: "edit",
 				Help: "Edit a template using the default editor.",
-				Handler: func(c cmdline.Context) error {
-					return edit.Run(&edit.Config{
-						Path:          c.RawValues("path").First(),
-						Configuration: programConfig,
-					})
-				},
 				Options: cmdline.Options{
 					&cmdline.Indexed{
 						Name: "template-path",
-						Help: "Path f the Template to be edited.",
+						Help: "Path of the template to be edited.",
 					},
+				},
+				Handler: func(c cmdline.Context) error {
+					return edit.Run(&edit.Config{
+						TemplatePath:  c.RawValues("template-path").First(),
+						Configuration: programConfig,
+					})
 				},
 			},
 			{
 				Name: "exec",
 				Help: "Execute a template to a target directory.",
-				Handler: func(c cmdline.Context) error {
-					// Create a map of UserVariables.
-					var vars = make(boil.Variables)
-					for _, v := range c.RawValues("var") {
-						var a = strings.Split(v, "=")
-						if len(a) != 2 {
-							return errors.New("var must be in format key=value")
-						}
-						vars[a[0]] = a[1]
-					}
-					// Execute Exec Command.
-					return exec.Run(&exec.Config{
-						TemplatePath:  c.RawValues("template-path").First(),
-						TargetDir:     c.RawValues("target-dir").First(),
-						NoExecute:     c.IsParsed("no-execute"),
-						Overwrite:     c.IsParsed("overwrite"),
-						Vars:          vars,
-						Configuration: programConfig,
-					})
-				},
 				Options: cmdline.Options{
 					&cmdline.Indexed{
 						Name: "template-path",
@@ -232,6 +222,26 @@ func main() {
 						ShortName: "r",
 						Help:      "Define a variale addressable from templates.",
 					},
+				},
+				Handler: func(c cmdline.Context) error {
+					// Create a map of UserVariables.
+					var vars = make(boil.Variables)
+					for _, v := range c.RawValues("var") {
+						var a = strings.Split(v, "=")
+						if len(a) != 2 {
+							return errors.New("var must be in format key=value")
+						}
+						vars[a[0]] = a[1]
+					}
+					// Execute Exec Command.
+					return exec.Run(&exec.Config{
+						TemplatePath:  c.RawValues("template-path").First(),
+						TargetDir:     c.RawValues("target-dir").First(),
+						NoExecute:     c.IsParsed("no-execute"),
+						Overwrite:     c.IsParsed("overwrite"),
+						Vars:          vars,
+						Configuration: programConfig,
+					})
 				},
 			},
 		},

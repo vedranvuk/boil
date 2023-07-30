@@ -9,6 +9,12 @@ import (
 	"strings"
 )
 
+// File is a file in a repository.
+type File interface {
+	fs.File
+	Write(p []byte) (n int, err error)
+}
+
 // Repository defines a location where Templates are stored.
 //
 // Templates inside a Repository are addressed by a path relative to the
@@ -32,7 +38,11 @@ type Repository interface {
 	// repository root and returns nil on success of error if the target file
 	// already exists. if the path is invalid or other error occurs it is
 	// returned.
-	NewFile(string) (fs.File, error)
+	NewFile(string) (File, error)
+
+	// OpenOrCreate opens an existing file or creates one if it doesnt exists
+	// and returns it or an error if one occurs. File is open in rwr mode.
+	OpenOrCreate(string) (File, error)
 
 	// LoadMetamap loads metadata from root directory recursively recursively
 	// walking all child subdirectories and returns it or returns a descriptive
@@ -43,8 +53,7 @@ type Repository interface {
 	// Template, under a key that will be a path relative to Repository.
 	//
 	// If the root of the Repository contains Metafile i.e. is a Template
-	// itself an entry for it will be set under an empty key - not the standard
-	//  current directory dot ".".
+	// itself an entry for it will be set under current directory dot ".".
 	LoadMetamap() (Metamap, error)
 
 	// Location returns the repository location in a format specific to
@@ -62,7 +71,7 @@ type Repository interface {
 func OpenRepository(path string) (repo Repository, err error) {
 	// TODO: Detect repository path and return an appropriate implementaiton.
 
-	// See if it's http
+	// TODO: Implement network loading.
 	if strings.HasPrefix(strings.ToLower(path), "http") {
 		return nil, errors.New("loading repositories from network not yet implemented")
 	}
@@ -149,9 +158,9 @@ func (self DiskRepository) NewTemplate(path string) (meta *Metafile, err error) 
 		return nil, fmt.Errorf("invalid filename %s", path)
 	}
 
-	meta = &Metafile{
-		directory: path,
-	}
+	meta = NewMetafile()
+	meta.Name = filepath.Base(path)
+
 	err = meta.Save()
 
 	return
@@ -173,7 +182,7 @@ func (self DiskRepository) NewDirectory(path string) (err error) {
 }
 
 // NewFile implements Repository.NewFile.
-func (self DiskRepository) NewFile(path string) (file fs.File, err error) {
+func (self DiskRepository) NewFile(path string) (file File, err error) {
 
 	if err = IsValidTemplatePath(path); err != nil {
 		return
@@ -184,7 +193,20 @@ func (self DiskRepository) NewFile(path string) (file fs.File, err error) {
 		return nil, fmt.Errorf("invalid filename %s", path)
 	}
 
-	return os.OpenFile(path, os.O_CREATE|os.O_EXCL, os.ModePerm)
+	return os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_RDWR, os.ModePerm)
+}
+
+func (self DiskRepository) OpenOrCreate(path string) (file File, err error) {
+	if err = IsValidTemplatePath(path); err != nil {
+		return
+	}
+
+	path = filepath.Join(self.root, path)
+	if !strings.HasPrefix(path, self.root) {
+		return nil, fmt.Errorf("invalid filename %s", path)
+	}
+
+	return os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.ModePerm)
 }
 
 // IsValidTemplatePath returns an error if the path is of invalid format.

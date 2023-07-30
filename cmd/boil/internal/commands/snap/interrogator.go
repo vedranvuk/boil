@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// Interrogator interrigates, asks questions.
+// Interrogator interrigates the user via some reader and writer.
 type Interrogator struct {
 	rw *bufio.ReadWriter
 }
@@ -20,6 +20,14 @@ func NewInterrogator(r io.Reader, w io.Writer) *Interrogator {
 	}
 }
 
+// Printf printfs to self.
+func (self *Interrogator) Printf(format string, arguments ...any) (err error) {
+	if _, err = fmt.Fprintf(self.rw, format, arguments...); err != nil {
+		return
+	}
+	return self.rw.Flush()
+}
+
 // Flush flushes self.
 func (self *Interrogator) Flush() error { return self.rw.Flush() }
 
@@ -29,7 +37,7 @@ func (self *Interrogator) Flush() error { return self.rw.Flush() }
 // repeated if the match failed.
 // If an error occurs it is returned with an empty result, nil otherwise.
 func (self *Interrogator) AskValue(def, regex string) (result string, err error) {
-	fmt.Fprintf(self.rw, "Enter value (Default: '%s'):\n", def)
+	self.Printf("Enter value (Default: '%s'):\n", def)
 	for {
 		if result, err = self.rw.ReadString('\n'); err != nil {
 			return
@@ -41,10 +49,11 @@ func (self *Interrogator) AskValue(def, regex string) (result string, err error)
 				return "", err
 			}
 			if !match {
+				self.Printf("Invalid value format. Try again\n")
 				continue
 			}
-			break
 		}
+		break
 	}
 	return
 }
@@ -55,13 +64,13 @@ func (self *Interrogator) AskValue(def, regex string) (result string, err error)
 // If an error occurs it is returned with an empty result, nil otherwise.
 func (self *Interrogator) AskChoice(def string, choices ...string) (result string, err error) {
 PrintChoices:
-	fmt.Fprintf(self.rw, "Choose a value (Default: '%s'):\n", def)
+	self.Printf("Choose a value (Default: '%s'):\n", def)
 	for _, v := range choices {
-		fmt.Fprintf(self.rw, "%s\n", v)
+		self.Printf("* %s\n", v)
 	}
 Prompt:
 	for {
-		fmt.Fprintf(self.rw, "\nEnter value:\n")
+		self.Printf("\nEnter value:\n")
 		if result, err = self.rw.ReadString('\n'); err != nil {
 			return
 		}
@@ -73,7 +82,7 @@ Prompt:
 				break Prompt
 			}
 		}
-		fmt.Fprintf(self.rw, "Try again.\n\n")
+		self.Printf("Try again.\n\n")
 		goto PrintChoices
 	}
 	return
@@ -84,7 +93,7 @@ func (self *Interrogator) AskYesNo() (result bool, err error) {
 
 	var response string
 
-	if response, err = self.AskChoice("yes", "yes", "no"); err != nil {
+	if response, err = self.AskChoice("no", "yes", "no"); err != nil {
 		return
 	}
 
@@ -97,9 +106,9 @@ func (self *Interrogator) AskList() (result []string, err error) {
 
 	var val string
 
-	fmt.Fprintf(self.rw, "Define a list of values. Enter an empty string to finish.\n")
+	self.Printf("Define a list of values. Enter an empty string to finish.\n")
 	for {
-		if val, err = self.AskValue(".*", ""); err != nil {
+		if val, err = self.AskValue("", ".*"); err != nil {
 			return
 		}
 		if val = strings.TrimSpace(val); val == "" {
@@ -111,18 +120,24 @@ func (self *Interrogator) AskList() (result []string, err error) {
 	return
 }
 
+// AskVariable asks for a key=value pair.
+// Prompt is aborted if empty name entered, returns empty keyval and nil.
 func (self *Interrogator) AskVariable() (key, value string, err error) {
 
-	fmt.Fprintf(self.rw, "Define a variable. Enter an empty string for Name to finish.\n")
+	self.Printf("Define a variable.\n")
 
-	fmt.Fprintf(self.rw, "Name:\n")
+	self.Printf("Name (Enter empty string to abort):\n")
 	if key, err = self.AskValue("", ".*"); err != nil {
+		return "", "", err
+	}
+
+	if key == "" {
 		return "", "", nil
 	}
 
-	fmt.Fprintf(self.rw, "Value:\n")
+	self.Printf("Value:\n")
 	if value, err = self.AskValue("", ".*"); err != nil {
-		return
+		return "", "", err
 	}
 
 	return

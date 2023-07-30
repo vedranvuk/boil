@@ -63,8 +63,24 @@
 			"args": [
 				"-v",
 				"snap",
+				"snapshot",
+				"-w"
+			]
+		},
+		{
+			"name": "boil snap -z",
+			"type": "go",
+			"request": "launch",
+			"mode": "auto",
+			"console": "integratedTerminal",
+			"cwd": "${workspaceFolder}/_testdata/snapshot",
+			"program": "${workspaceFolder}/cmd/boil",
+			"args": [
+				"-v",
+				"snap",
+				"snapshot",
 				"-w",
-				"lol/stfu"
+				"-z"
 			]
 		}
 	]
