@@ -24,12 +24,12 @@ type Config struct {
 	// empty string during Run().
 	TemplatePath string
 
-	// TargetDir is the output directory where Template will be executed.
+	// OutputDir is the output directory where Template will be executed.
 	// If the value is empty the Template will be executed in the current
 	// working directory
 	//
-	// TargetPath is adjusted to an absolute path of TargetDir during Run().
-	TargetDir string
+	// TargetPath is adjusted to an absolute path of OutputDir during Run().
+	OutputDir string
 
 	// NoExecute, if true will not execute any write operations and will
 	// instead print out the operations like boil.Config.Verbose was enabled.
@@ -63,8 +63,8 @@ type state struct {
 	RepositoryPath string
 	// TemplatePath is the adjusted path to the template usable by Repository.
 	TemplatePath string
-	// TargetDir is the adjusted absolute path to the output directory.
-	TargetDir string
+	// OutputDir is the adjusted absolute path to the output directory.
+	OutputDir string
 	// Repository is the loaded Repository.
 	Repository boil.Repository
 	// Metamap is the metamap of the loaded repository.
@@ -84,7 +84,7 @@ func Run(config *Config) (err error) {
 	var state = &state{
 		RepositoryPath: config.GetRepositoryPath(),
 		TemplatePath:   config.TemplatePath,
-		TargetDir:      config.TargetDir,
+		OutputDir:      config.OutputDir,
 		MakeBackups:    config.Configuration.ShouldBackup(),
 		Data:           NewData(),
 	}
@@ -104,7 +104,7 @@ func Run(config *Config) (err error) {
 		}
 	}
 
-	if state.Repository, err = boil.OpenRepository(state.RepositoryPath); err != nil {
+	if state.Repository, err = boil.OpenRepository(config.Configuration); err != nil {
 		return fmt.Errorf("open repository: %w", err)
 	}
 
@@ -112,7 +112,7 @@ func Run(config *Config) (err error) {
 		return fmt.Errorf("load metamap: %w", err)
 	}
 
-	if state.TargetDir, err = filepath.Abs(config.TargetDir); err != nil {
+	if state.OutputDir, err = filepath.Abs(config.OutputDir); err != nil {
 		return fmt.Errorf("get absolute target path: %w", err)
 	}
 

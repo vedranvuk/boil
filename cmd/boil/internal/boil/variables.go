@@ -12,13 +12,14 @@ import "strings"
 // command or defined by the user on Template execution via command line.
 type Variables map[string]any
 
-// ReplaceAll replaces all known variable placeholders in input string with
-// actual values and returns it.
-func (self Variables) ReplaceAll(in string) (out string) {
+// ReplacePlaceholders replaces all known variable placeholders in input string
+// with actual values and returns it.
+//
+// A placeholder is a case sensitive variable name prefixed with "$".
+func (self Variables) ReplacePlaceholders(in string) (out string) {
 	out = in
 	for k, v := range self {
 		out = strings.ReplaceAll(out, "$"+k, v.(string))
 	}
 	return out
 }
-

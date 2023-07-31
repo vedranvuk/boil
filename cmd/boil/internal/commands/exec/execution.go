@@ -76,7 +76,7 @@ func produceTemplates(state *state, path string, templates *Templates) (err erro
 	for _, dir := range meta.Directories {
 		list.List = append(list.List, &Execution{
 			Source: filepath.Join(path, dir),
-			Target: filepath.Join(state.TargetDir, dir),
+			Target: filepath.Join(state.OutputDir, dir),
 			IsDir:  true,
 		})
 	}
@@ -87,7 +87,7 @@ func produceTemplates(state *state, path string, templates *Templates) (err erro
 		}
 		list.List = append(list.List, &Execution{
 			Source: filepath.Join(path, file),
-			Target: filepath.Join(state.TargetDir, file),
+			Target: filepath.Join(state.OutputDir, file),
 			IsDir:  false,
 		})
 	}
@@ -220,7 +220,7 @@ func (self Templates) Execute(state *state) (err error) {
 
 	if state.MakeBackups {
 		var id string
-		if id, err = boil.CreateBackup(state.TargetDir); err != nil {
+		if id, err = boil.CreateBackup(state.OutputDir); err != nil {
 			return fmt.Errorf("create target dir backup: %w", err)
 		}
 		defer func() {

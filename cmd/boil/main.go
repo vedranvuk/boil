@@ -85,10 +85,7 @@ func main() {
 			}
 			if c.IsParsed("verbose") {
 				fmt.Printf("Using configuration file: %s\n", programConfig.Runtime.LoadedConfigFile)
-				fmt.Println("Loaded configuration file values:")
-				fmt.Println()
 				programConfig.Print()
-				fmt.Println()
 			}
 			return nil
 		},
@@ -202,8 +199,56 @@ func main() {
 				Handler: func(c cmdline.Context) error {
 					return edit.Run(&edit.Config{
 						TemplatePath:  c.RawValues("template-path").First(),
+						EditAction:    "edit",
 						Configuration: programConfig,
 					})
+				},
+				SubCommands: cmdline.Commands{
+					{
+						Name:    "all",
+						Help:    "Edit all metafile values.",
+						Handler: handleEditSubCommand,
+					},
+					{
+						Name:    "info",
+						Help:    "Edit basic metafile info.",
+						Handler: handleEditSubCommand,
+					},
+					{
+						Name:    "files",
+						Help:    "Edit list of referenced files.",
+						Handler: handleEditSubCommand,
+					},
+					{
+						Name:    "dirs",
+						Help:    "Edit list of references directories.",
+						Handler: handleEditSubCommand,
+					},
+					{
+						Name:    "prompts",
+						Help:    "Edit prompts.",
+						Handler: handleEditSubCommand,
+					},
+					{
+						Name:    "preparse",
+						Help:    "Edit pre-parse actions.",
+						Handler: handleEditSubCommand,
+					},
+					{
+						Name:    "preexec",
+						Help:    "Edit pre-execute actions.",
+						Handler: handleEditSubCommand,
+					},
+					{
+						Name:    "postexec",
+						Help:    "Edit post-execute actions.",
+						Handler: handleEditSubCommand,
+					},
+					{
+						Name:    "groups",
+						Help:    "Edit template groups.",
+						Handler: handleEditSubCommand,
+					},
 				},
 			},
 			{
@@ -222,22 +267,17 @@ func main() {
 					&cmdline.Boolean{
 						LongName:  "no-execute",
 						ShortName: "x",
-						Help:      "Do not execute commands.",
+						Help:      "Print commands but do not execute them.",
 					},
 					&cmdline.Optional{
-						LongName:  "target-dir",
-						ShortName: "t",
-						Help:      "Target directory.",
-					},
-					&cmdline.Optional{
-						LongName:  "module-path",
-						ShortName: "m",
-						Help:      "Module path to use for generating go.mod files.",
+						LongName:  "output-dir",
+						ShortName: "o",
+						Help:      "Specify output directory (default: current directory).",
 					},
 					&cmdline.Repeated{
 						LongName:  "var",
 						ShortName: "r",
-						Help:      "Define a variale addressable from templates.",
+						Help:      "Define a variable.",
 					},
 				},
 				Handler: func(c cmdline.Context) error {
@@ -246,14 +286,14 @@ func main() {
 					for _, v := range c.RawValues("var") {
 						var a = strings.Split(v, "=")
 						if len(a) != 2 {
-							return errors.New("var must be in format key=value")
+							return errors.New("variable must be in 'key=value' format")
 						}
 						vars[a[0]] = a[1]
 					}
 					// Execute Exec Command.
 					return exec.Run(&exec.Config{
 						TemplatePath:  c.RawValues("template-path").First(),
-						TargetDir:     c.RawValues("target-dir").First(),
+						OutputDir:     c.RawValues("target-dir").First(),
 						NoExecute:     c.IsParsed("no-execute"),
 						Overwrite:     c.IsParsed("overwrite"),
 						Vars:          vars,
@@ -271,4 +311,17 @@ func main() {
 		fmt.Fprintln(os.Stderr, fmt.Errorf("error: %w", err))
 		os.Exit(1)
 	}
+	if !cmdlineConfig.Commands.AnyExecuted() {
+		cmdlineConfig.PrintUsage()
+		os.Exit(0)
+	}
+}
+
+// handleEditSubCommand handles the edit command and all of its subcommands.
+func handleEditSubCommand(c cmdline.Context) error {
+	return edit.Run(&edit.Config{
+		TemplatePath:  c.GetParentCommand().Options.RawValues("template-path").First(),
+		EditAction:    c.GetCommand().Name,
+		Configuration: programConfig,
+	})
 }

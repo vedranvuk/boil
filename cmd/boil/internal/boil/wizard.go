@@ -28,48 +28,7 @@ func (self *Wizard) Execute() (err error) {
 
 	self.Printf("New template wizard\n\n")
 
-	self.Printf("Template description:\n")
-	if self.metafile.Description, err = self.AskValue("", ".*"); err != nil {
-		return
-	}
-
-	self.Printf("Template author name:\n")
-	if self.metafile.Author.Name, err = self.AskValue(
-		self.config.DefaultAuthor.Name,
-		".*",
-	); err != nil {
-		return err
-	}
-
-	self.Printf("Template author email:\n")
-	if self.metafile.Author.Email, err = self.AskValue(
-		self.config.DefaultAuthor.Email,
-		".*",
-	); err != nil {
-		return
-	}
-
-	self.Printf("Template author homepage:\n")
-	if self.metafile.Author.Homepage, err = self.AskValue(
-		self.config.DefaultAuthor.Homepage,
-		".*",
-	); err != nil {
-		return
-	}
-
-	self.Printf("Template version:\n")
-	if self.metafile.Version, err = self.AskValue(
-		"1.0.0",
-		".*",
-	); err != nil {
-		return
-	}
-
-	self.Printf("Template URL:\n")
-	if self.metafile.URL, err = self.AskValue(
-		"http://",
-		".*",
-	); err != nil {
+	if err = self.EditInfo(); err != nil {
 		return
 	}
 
@@ -243,4 +202,63 @@ func (self *Wizard) defineEnvVariables() (result map[string]string, err error) {
 		result[key] = val
 	}
 	return
+}
+
+// EditInfo edits basic metafile info.
+func (self *Wizard) EditInfo() (err error) {
+
+	self.Printf("Template description:\n")
+	if self.metafile.Description, err = self.AskValue(
+		self.metafile.Description,
+		".*",
+	); err != nil {
+		return
+	}
+
+	self.Printf("Template author name:\n")
+	if self.metafile.Author.Name, err = self.AskValue(
+		self.config.DefaultAuthor.Name,
+		".*",
+	); err != nil {
+		return err
+	}
+
+	self.Printf("Template author email:\n")
+	if self.metafile.Author.Email, err = self.AskValue(
+		self.config.DefaultAuthor.Email,
+		".*",
+	); err != nil {
+		return
+	}
+
+	self.Printf("Template author homepage:\n")
+	if self.metafile.Author.Homepage, err = self.AskValue(
+		self.config.DefaultAuthor.Homepage,
+		".*",
+	); err != nil {
+		return
+	}
+
+	self.Printf("Template version:\n")
+	if self.metafile.Version, err = self.AskValue(
+		self.metafile.Version,
+		".*",
+	); err != nil {
+		return
+	}
+
+	self.Printf("Template URL:\n")
+	if self.metafile.URL, err = self.AskValue(
+		self.metafile.URL,
+		".*",
+	); err != nil {
+		return
+	}
+
+	return nil
+}
+
+// EditGroups edits metafile Groups.
+func (self *Wizard) EditGroups() error {
+	return nil
 }

@@ -16,6 +16,19 @@ import (
 // MetafileName is the name of a file that defines a Boil template.
 const MetafileName = "boil.json"
 
+// NewMetafile returns a new metfile initialized to defaults from config.
+func NewMetafile(config *Configuration) *Metafile {
+	return &Metafile{
+		Author: &Author{
+			Name:     config.DefaultAuthor.Name,
+			Email:    config.DefaultAuthor.Email,
+			Homepage: config.DefaultAuthor.Homepage,
+		},
+		Version: "1.0.0",
+		URL:     "https://",
+	}
+}
+
 // Metafile is the Boil Template metadata. A directory with a valid Metafile
 // defines a Template.
 //
@@ -135,9 +148,6 @@ type Metafile struct {
 	directory string
 }
 
-// NewMetafile returns a new metfile.
-func NewMetafile() *Metafile { return &Metafile{Author: &Author{}} }
-
 func (self *Metafile) Print() {
 	var wr = tabwriter.NewWriter(os.Stdout, 2, 2, 2, 32, 0)
 	fmt.Fprintf(wr, "Name:\t%s\n", self.Name)
@@ -213,6 +223,9 @@ func LoadMetafileFromDir(dir string) (metadata *Metafile, err error) {
 	}
 	return
 }
+
+// NewAuthor returns a new *Author.
+func NewAuthor() *Author { return &Author{} }
 
 // Author defines an author of a Template or a Repository.
 type Author struct {

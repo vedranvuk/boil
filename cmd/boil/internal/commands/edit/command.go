@@ -2,14 +2,18 @@ package edit
 
 import (
 	"fmt"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
 )
 
+// Config is the Edit command configuration.
 type Config struct {
+	// TemplatePath is the path of the template to edit.
+	// It may not contain group names.
 	TemplatePath string
+	// EditAction specifies the edit sub action.
+	EditAction string
 	// Config is the loaded program configuration.
 	Configuration *boil.Configuration
 }
@@ -18,12 +22,14 @@ type Config struct {
 // If an error occurs it is returned and the operation may be considered failed.
 func Run(config *Config) (err error) { return newState().Run(config) }
 
+// newState returns a new state.
 func newState() *state {
 	return &state{
 		vars: make(boil.Variables),
 	}
 }
 
+// state is the execution state of the edit command.
 type state struct {
 	config   *Config
 	repo     boil.Repository
@@ -39,7 +45,7 @@ func (self *state) Run(config *Config) (err error) {
 	if self.config = config; self.config == nil {
 		return fmt.Errorf("nil config")
 	}
-	if self.repo, err = boil.OpenRepository(config.Configuration.GetRepositoryPath()); err != nil {
+	if self.repo, err = boil.OpenRepository(config.Configuration); err != nil {
 		return fmt.Errorf("open repository: %w", err)
 	}
 	if self.metamap, err = self.repo.LoadMetamap(); err != nil {
@@ -48,20 +54,25 @@ func (self *state) Run(config *Config) (err error) {
 	if self.metafile, err = self.metamap.Metafile(config.TemplatePath); err != nil {
 		return fmt.Errorf("template %s not found", config.TemplatePath)
 	}
-	
+
 	self.vars["TemplatePath"] = filepath.Join(self.repo.Location(), config.TemplatePath)
 
-	var args []string
-	for _, arg := range config.Configuration.Editor.Arguments {
-		args = append(args, self.vars.ReplaceAll(arg))
+	switch config.EditAction {
+	case "edit":
+		return self.config.Configuration.Editor.Execute(self.vars)
+	case "all":
+	case "info":
+		err = boil.NewWizard(config.Configuration, self.metafile).EditInfo()
+	case "files":
+	case "dirs":
+	case "prompts":
+	case "preparse":
+	case "preexec":
+	case "postexec":
+	case "groups":
+		err = boil.NewWizard(config.Configuration, self.metafile).EditGroups()
+	default:
+		panic("unknown edit action")
 	}
-	cmd := exec.Command(config.Configuration.Editor.Program, args...)
-	var buf []byte
-	buf, err = cmd.Output()
-	fmt.Print(string(buf))
-	if err != nil {
-		return fmt.Errorf("exec editor on '%s': %w", cmd.Path, err)
-	}
-
-	return nil
+	return self.repo.SaveTemplate(self.metafile)
 }

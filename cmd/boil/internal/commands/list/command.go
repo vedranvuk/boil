@@ -22,7 +22,7 @@ func Run(config *Config) (err error) {
 		filtered = make(boil.Metamap)
 	)
 
-	if repo, err = boil.OpenRepository(config.Configuration.GetRepositoryPath()); err != nil {
+	if repo, err = boil.OpenRepository(config.Configuration); err != nil {
 		return fmt.Errorf("open repository: %w", err)
 	}
 

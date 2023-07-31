@@ -1,31 +1,41 @@
 package main
 
 import (
-	"bufio"
-	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"text/tabwriter"
 
 	"github.com/vedranvuk/cmdline"
 )
 
+// helpTopics are the available help topic definitions.
+var helpTopics = HelpTopics{
+	{
+		Topic:       "help",
+		Description: "Help system usage.",
+		Print:       printHelp,
+	},
+	{
+		Topic:       "overview",
+		Description: "Short overview on boil usage.",
+		Print:       printOverview,
+	},
+	{
+		Topic:       "exec",
+		Description: "Exec command usage.",
+		Print:       printExec,
+	},
+}
+
+// handleHelp is the help command handler.
 func handleHelp(c cmdline.Context) error {
 
 	// List topics.
 	if c.IsParsed("list-topics") {
-		if c.IsParsed("topic") {
-			return errors.New("Options 'list-topics' and 'topic' are mutually exclusive")
-		}
 		var wr = tabwriter.NewWriter(os.Stdout, 2, 2, 2, 32, 0)
 		fmt.Fprintf(wr, "Available help topics are:\n\n")
-		for k, v := range helpTopics {
-			var title, err = bufio.NewReader(strings.NewReader(v)).ReadString('\n')
-			if err != nil {
-				panic(fmt.Errorf("unable to scan help topic title: %w", err))
-			}
-			fmt.Fprintf(wr, "\t%s\t%s", k, title)
+		for _, topic := range helpTopics {
+			fmt.Fprintf(wr, "\t%s\t%s\n", topic.Topic, topic.Description)
 		}
 		wr.Flush()
 		return nil
@@ -34,12 +44,11 @@ func handleHelp(c cmdline.Context) error {
 	// Show specific topic.
 	if c.IsParsed("topic") {
 		var topic = c.RawValues("topic").First()
-		var text, exists = helpTopics[topic]
-		if !exists {
+		if !helpTopics.Exists(topic) {
 			fmt.Printf("no help for '%s'\n", topic)
 			os.Exit(1)
 		}
-		fmt.Print(text)
+		helpTopics.Print(topic)
 		return nil
 	}
 
@@ -48,23 +57,51 @@ func handleHelp(c cmdline.Context) error {
 	return nil
 }
 
-// helpTopics is a map of topic keywords to topic text.
-//
-// Formatting of the topic text must be in the form of a:
-// * Descriptive title on first line that will also be used in topic listing.
-// * A blank line.
-// * The topic text itself, further formatted freely.
-//
-// If these rules are not met, listing help topics via 'help -l' will panic.
-var helpTopics = map[string]string{
-	"overview": overviewTopic,
-	"help":     helpTopic,
-	"exec":     execTopic,
-	"stdvars":  stdvarsTopic,
+// HelpTopic defines a help topic.
+type HelpTopic struct {
+	// Topic is the keyword by which this help is referenced.
+	Topic string
+	// Description is a short overview text.
+	Description string
+	// Print prints the actual help text.
+	Print func()
 }
 
-const (
-	overviewTopic = `Short primer on using boil
+// HelpTopics is a slice of HelpTopic with few utility methods.
+type HelpTopics []HelpTopic
+
+// Exists returns true if a self contains a topic on keyword.
+func (self HelpTopics) Exists(keyword string) bool {
+	for _, t := range self {
+		if t.Topic == keyword {
+			return true
+		}
+	}
+	return false
+}
+
+// Print prints the topic, if found.
+func (self HelpTopics) Print(topic string) {
+	for _, t := range self {
+		if t.Topic == topic {
+			t.Print()
+			break
+		}
+	}
+}
+
+const helpText = `Help command
+
+
+The help command provides extended help about a command.
+To get help about a specific command type 'boil help <command>'.
+`
+
+func printHelp() {
+	fmt.Print(helpText)
+}
+
+const overviewText = `Short primer on using boil
 
 Boil
 
@@ -217,25 +254,19 @@ executed into target directory.
 
 `
 
-	helpTopic = `Help command
+func printOverview() {
+	fmt.Print(overviewText)
+}
 
-The help command provides extended help about a command.
-To get help about a specific command type 'boil help <command>'.
-`
+const execText = `
+Usage: boil exec <template-path> [options]
 
-	execTopic = `Exec command
-	
 The exec command executes a template to a target directory replacing placeholder 
 variables in the process and executing a template using values provided on 
 command line or extracted from a go file.
 `
 
-	stdvarsTopic = `Standard variables
-
-The standard variables available to all template files during template execution
-including file name expansion are:
-
-	OutputDirectory	 Absolute path of the output directory.
-	TemplatePath     Template path as specified.
-`
-)
+func printExec() {
+	cmdline.PrintCommand(os.Stdout, cmdlineConfig, cmdlineConfig.Commands.Find("exec"), 0)
+	fmt.Print(execText)
+}

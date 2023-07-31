@@ -5,6 +5,13 @@ import (
 	"os/exec"
 )
 
+// NewAction returns a new *Action.
+func NewAction() *Action {
+	return &Action{
+		Environment: make(map[string]string),
+	}
+}
+
 // Action defines some external action to execute via command line.
 // See Metafile.Actions for details on Action usage.
 type Action struct {
@@ -21,7 +28,29 @@ type Action struct {
 	Environment map[string]string `json:"environment,omitempty"`
 	// NoFail, if true will not break the execution of the process that ran
 	// the Action, but it will generate a warning in the output.
-	NoFail bool
+	NoFail bool `json:"noFail,omitempty"`
+}
+
+// Execute executes the Action and returns nil on success of error if one occurs.
+func (self *Action) Execute(variables Variables) (err error) {
+
+	var args []string
+	for _, arg := range self.Arguments {
+		args = append(args, variables.ReplacePlaceholders(arg))
+	}
+
+	var cmd = exec.Command(
+		variables.ReplacePlaceholders(self.Program),
+		args...,
+	)
+	cmd.Dir = variables.ReplacePlaceholders(self.WorkDir)
+	for k, v := range self.Environment {
+		cmd.Env = append(cmd.Env, k+"="+variables.ReplacePlaceholders(v))
+	}
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	return cmd.Run()
 }
 
 // Actions is a slice of Action with some utilities.
@@ -30,31 +59,10 @@ type Actions []*Action
 // ExecuteAll executes all actions in self. Returns the error of the first
 // action that returns it and stops further execution or nil if no errors occur.
 func (self Actions) ExecuteAll(variables Variables) (err error) {
-
-	var (
-		cmd  *exec.Cmd
-		args []string
-	)
-
 	for _, action := range self {
-
-		for _, arg := range action.Arguments {
-			args = append(args, variables.ReplaceAll(arg))
+		if err = action.Execute(variables); err != nil {
+			return
 		}
-
-		cmd = exec.Command(
-			variables.ReplaceAll(action.Program),
-			args...,
-		)
-		cmd.Dir = variables.ReplaceAll(action.WorkDir)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-
-		for k, v := range action.Environment {
-			cmd.Env = append(cmd.Env, k+"="+variables.ReplaceAll(v))
-		}
-
-		err = cmd.Run()
 	}
 	return
 }

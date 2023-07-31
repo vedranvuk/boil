@@ -5,14 +5,13 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"name": "boil",
+			"name": "boil -v",
 			"type": "go",
 			"request": "launch",
 			"mode": "auto",
 			"program": "${workspaceFolder}/cmd/boil",
 			"args": [
-				"--config=${workspaceFolder}/cmd/boil/config.json",
-				"--repository=${workspaceFolder}/_testdata/templates"
+				"-v"
 			],
 		},
 		{

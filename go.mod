@@ -6,7 +6,7 @@ replace github.com/vedranvuk/cmdline => ../cmdline
 
 require (
 	github.com/adrg/xdg v0.4.0
-	github.com/vedranvuk/cmdline v0.0.0-20230730152211-7e9631c5a0b0
+	github.com/vedranvuk/cmdline v0.0.0-20230731113001-bf3ccfb96094
 )
 
 require (

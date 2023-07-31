@@ -73,7 +73,9 @@ type Repository interface {
 // * local filesystem (DiskRepository)
 //
 // If an error occurs it is returned with a nil repository.
-func OpenRepository(path string) (repo Repository, err error) {
+func OpenRepository(config *Configuration) (repo Repository, err error) {
+
+	var path = config.GetRepositoryPath()
 	// TODO: Detect repository path and return an appropriate implementaiton.
 
 	// TODO: Implement network loading.
@@ -100,19 +102,19 @@ func OpenRepository(path string) (repo Repository, err error) {
 		}
 	}
 
-	return NewDiskRepository(path), nil
+	return NewDiskRepository(config), nil
 }
 
 // DiskRepository is a repository that works with a local fileystem.
 // It is initialized from an absolute filesystem path or a path relative to the
 // current working directory.
 type DiskRepository struct {
-	root string
+	config *Configuration
 }
 
 // NewDiskRepository returns a new DiskRepository rooted at root.
-func NewDiskRepository(root string) *DiskRepository {
-	return &DiskRepository{root}
+func NewDiskRepository(config *Configuration) *DiskRepository {
+	return &DiskRepository{config}
 }
 
 // Open implements Repository.StatFS.Open.
@@ -120,8 +122,9 @@ func (self DiskRepository) Open(name string) (file fs.File, err error) {
 	if err = IsValidTemplatePath(name); err != nil {
 		return
 	}
-	var fn = filepath.Join(self.root, name)
-	if !strings.HasPrefix(fn, self.root) {
+	var root = self.config.GetRepositoryPath()
+	var fn = filepath.Join(root, name)
+	if !strings.HasPrefix(fn, root) {
 		return nil, fmt.Errorf("invalid filename %s", name)
 	}
 	return os.OpenFile(fn, os.O_RDONLY, os.ModePerm)
@@ -132,8 +135,9 @@ func (self DiskRepository) Stat(name string) (file fs.FileInfo, err error) {
 	if err = IsValidTemplatePath(name); err != nil {
 		return
 	}
-	var fn = filepath.Join(self.root, name)
-	if !strings.HasPrefix(fn, self.root) {
+	var root = self.config.GetRepositoryPath()
+	var fn = filepath.Join(root, name)
+	if !strings.HasPrefix(fn, root) {
 		return nil, fmt.Errorf("invalid filename %s", name)
 	}
 	return os.Stat(fn)
@@ -141,11 +145,11 @@ func (self DiskRepository) Stat(name string) (file fs.FileInfo, err error) {
 
 // LoadMetamap implements Repository.LoadMetamap.
 func (self DiskRepository) LoadMetamap() (m Metamap, err error) {
-	return MetamapFromDir(self.root)
+	return MetamapFromDir(self.config.GetRepositoryPath())
 }
 
 // Location implements Repository.Location.
-func (self DiskRepository) Location() string { return self.root }
+func (self DiskRepository) Location() string { return self.config.GetRepositoryPath() }
 
 // NewTemplate implements Repository.NewTemplate.
 func (self DiskRepository) NewTemplate(path string) (meta *Metafile, err error) {
@@ -154,11 +158,13 @@ func (self DiskRepository) NewTemplate(path string) (meta *Metafile, err error) 
 		return
 	}
 
-	if path = filepath.Join(self.root, path); !strings.HasPrefix(path, self.root) {
+	var root = self.config.GetRepositoryPath()
+	var fn = filepath.Join(root, path)
+	if !strings.HasPrefix(fn, root) {
 		return nil, fmt.Errorf("invalid filename %s", path)
 	}
 
-	meta = NewMetafile()
+	meta = NewMetafile(self.config)
 	meta.Name = filepath.Base(path)
 
 	return
@@ -173,7 +179,7 @@ func (self DiskRepository) SaveTemplate(metafile *Metafile) (err error) {
 	if err = self.NewDirectory(metafile.Name); err != nil {
 		return
 	}
-	var path = filepath.Join(self.root, metafile.Name, MetafileName)
+	var path = filepath.Join(self.config.GetRepositoryPath(), metafile.Name, MetafileName)
 	if err = ioutil.WriteFile(path, buf, os.ModePerm); err != nil {
 		return fmt.Errorf("write metafile: %w", err)
 	}
@@ -187,8 +193,9 @@ func (self DiskRepository) NewDirectory(path string) (err error) {
 		return
 	}
 
-	path = filepath.Join(self.root, path)
-	if !strings.HasPrefix(path, self.root) {
+	var root = self.config.GetRepositoryPath()
+	var fn = filepath.Join(root, path)
+	if !strings.HasPrefix(fn, root) {
 		return fmt.Errorf("invalid filename %s", path)
 	}
 
@@ -202,8 +209,9 @@ func (self DiskRepository) NewFile(path string) (file File, err error) {
 		return
 	}
 
-	path = filepath.Join(self.root, path)
-	if !strings.HasPrefix(path, self.root) {
+	var root = self.config.GetRepositoryPath()
+	var fn = filepath.Join(root, path)
+	if !strings.HasPrefix(fn, root) {
 		return nil, fmt.Errorf("invalid filename %s", path)
 	}
 
@@ -215,8 +223,9 @@ func (self DiskRepository) OpenOrCreate(path string) (file File, err error) {
 		return
 	}
 
-	path = filepath.Join(self.root, path)
-	if !strings.HasPrefix(path, self.root) {
+	var root = self.config.GetRepositoryPath()
+	var fn = filepath.Join(root, path)
+	if !strings.HasPrefix(fn, root) {
 		return nil, fmt.Errorf("invalid filename %s", path)
 	}
 

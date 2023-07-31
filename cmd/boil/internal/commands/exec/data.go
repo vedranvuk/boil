@@ -33,7 +33,7 @@ func (self *Data) AddVar(key string, value any) error {
 
 // InitStandardVars initializes values of standard variables.
 func (self *Data) InitStandardVars(state *state) error {
-	self.Vars["OutputDirectory"] = state.TargetDir
+	self.Vars["OutputDirectory"] = state.OutputDir
 	self.Vars["TemplatePath"] = state.TemplatePath
 	return nil
 }
@@ -53,5 +53,5 @@ func (self *Data) MergeVars(vars boil.Variables) error {
 // ReplaceAll replaces all known variable placeholders in input string with
 // actual values and returns it.
 func (self *Data) ReplaceAll(in string) (out string) {
-	return self.Vars.ReplaceAll(in)
+	return self.Vars.ReplacePlaceholders(in)
 }

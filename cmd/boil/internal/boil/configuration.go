@@ -37,6 +37,30 @@ func DefaultRepositoryDir() string {
 	return filepath.Join(DefaultConfigDir(), RepositoryDir)
 }
 
+// DefaultConfig returns a config set to defaults or an error.
+func DefaultConfig() (config *Configuration, err error) {
+
+	var usr *user.User
+	if usr, err = user.Current(); err != nil {
+		return nil, fmt.Errorf("get current user: %w", err)
+	}
+	var name string
+	if name = usr.Name; name == "" {
+		name = usr.Username
+	}
+
+	config = &Configuration{
+		DefaultAuthor: &Author{
+			Name: name,
+		},
+		Editor:         NewAction(),
+		RepositoryPath: DefaultRepositoryDir(),
+	}
+	config.Editor.Program = "code"
+	config.Editor.Arguments = []string{"$TemplatePath"}
+	return
+}
+
 // Configuration represents Boil configuration file.
 type Configuration struct {
 	// Author is the default template author info.
@@ -54,13 +78,7 @@ type Configuration struct {
 	// Editor defines the action to execute for the "edit" command.
 	// If no editor is defined Boil opens the Template directory in the default
 	// system file explorer.
-	Editor struct {
-		// Program is the path to the editor executable.
-		Program string `json:"program,omitempty"`
-		// Arguments is a slice of arguments to pass to the Program.
-		// A subset of variable placeholders is supported (TODO).
-		Arguments []string `json:"arguments,omitempty"`
-	} `json:"editor,omitempty"`
+	Editor *Action `json:"editor,omitempty"`
 
 	// Overrides are the configuration overrides specified on command line.
 	// They exist at runtime only and are not serialized with Config.
@@ -88,7 +106,6 @@ type Configuration struct {
 // Print prints self to stdout.
 func (self *Configuration) Print() {
 	var wr = tabwriter.NewWriter(os.Stdout, 2, 2, 2, 32, 0)
-	fmt.Fprintf(wr, "[Key]\t[Value]\n")
 	fmt.Fprintf(wr, "DefaultAuthor.Name\t%s\n", self.DefaultAuthor.Name)
 	fmt.Fprintf(wr, "DefaultAuthor.Email\t%s\n", self.DefaultAuthor.Email)
 	fmt.Fprintf(wr, "DefaultAuthor.Homepage\t%s\n", self.DefaultAuthor.Homepage)
@@ -96,30 +113,7 @@ func (self *Configuration) Print() {
 	fmt.Fprintf(wr, "DisableBackup\t%t\n", self.DisableBackup)
 	fmt.Fprintf(wr, "Editor.Program\t%s\n", self.Editor.Program)
 	fmt.Fprintf(wr, "Editor.Arguments\t%v\n", self.Editor.Arguments)
-	fmt.Fprintf(wr, "\n")
 	wr.Flush()
-}
-
-// DefaultConfig returns a config set to defaults or an error.
-func DefaultConfig() (config *Configuration, err error) {
-
-	var usr *user.User
-	if usr, err = user.Current(); err != nil {
-		return nil, fmt.Errorf("get current user: %w", err)
-	}
-	var name string
-	if name = usr.Name; name == "" {
-		name = usr.Username
-	}
-
-	config = new(Configuration)
-	config.DefaultAuthor = &Author{
-		Name: name,
-	}
-	config.RepositoryPath = DefaultRepositoryDir()
-	config.Editor.Program = "code"
-	config.Editor.Arguments = []string{"$TemplateDirectory"}
-	return
 }
 
 // LoadFromFile loads self from filename or returns an error.

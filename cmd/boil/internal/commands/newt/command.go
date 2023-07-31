@@ -37,7 +37,7 @@ func (self *state) Run(config *Config) (err error) {
 	if err = boil.IsValidTemplatePath(config.TemplatePath); err != nil {
 		return err
 	}
-	if self.repo, err = boil.OpenRepository(config.Configuration.GetRepositoryPath()); err != nil {
+	if self.repo, err = boil.OpenRepository(config.Configuration); err != nil {
 		return fmt.Errorf("open repository: %w", err)
 	}
 	if self.metamap, err = self.repo.LoadMetamap(); err != nil {
@@ -62,7 +62,7 @@ func (self *state) Run(config *Config) (err error) {
 
 	var args []string
 	for _, arg := range config.Configuration.Editor.Arguments {
-		args = append(args, self.vars.ReplaceAll(arg))
+		args = append(args, self.vars.ReplacePlaceholders(arg))
 	}
 	cmd := exec.Command(config.Configuration.Editor.Program, args...)
 	var buf []byte

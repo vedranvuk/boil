@@ -126,7 +126,7 @@ func (self *Interrogator) AskVariable() (key, value string, err error) {
 
 	self.Printf("Define a variable.\n")
 
-	self.Printf("Name (Enter empty string to abort):\n")
+	self.Printf("Name (Enter empty string to stop):\n")
 	if key, err = self.AskValue("", ".*"); err != nil {
 		return "", "", err
 	}
