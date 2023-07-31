@@ -61,18 +61,31 @@ func (self *state) Run(config *Config) (err error) {
 	case "edit":
 		return self.config.Configuration.Editor.Execute(self.vars)
 	case "all":
+		err = boil.NewWizard(config.Configuration, self.metafile).EditAll()
 	case "info":
 		err = boil.NewWizard(config.Configuration, self.metafile).EditInfo()
 	case "files":
+		err = boil.NewWizard(config.Configuration, self.metafile).EditFiles()
 	case "dirs":
+		err = boil.NewWizard(config.Configuration, self.metafile).EditDirs()
 	case "prompts":
+		err = boil.NewWizard(config.Configuration, self.metafile).EditPrompts()
 	case "preparse":
+		err = boil.NewWizard(config.Configuration, self.metafile).EditPreParse()
 	case "preexec":
+		err = boil.NewWizard(config.Configuration, self.metafile).EditPreExec()
 	case "postexec":
+		err = boil.NewWizard(config.Configuration, self.metafile).EditPostExec()
 	case "groups":
 		err = boil.NewWizard(config.Configuration, self.metafile).EditGroups()
 	default:
 		panic("unknown edit action")
+	}
+	if err != nil {
+		return
+	}
+	if config.Configuration.Overrides.Verbose {
+		self.metafile.Print()
 	}
 	return self.repo.SaveTemplate(self.metafile)
 }

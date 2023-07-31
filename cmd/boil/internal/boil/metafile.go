@@ -24,8 +24,12 @@ func NewMetafile(config *Configuration) *Metafile {
 			Email:    config.DefaultAuthor.Email,
 			Homepage: config.DefaultAuthor.Homepage,
 		},
-		Version: "1.0.0",
-		URL:     "https://",
+		Version:     "1.0.0",
+		URL:         "https://",
+		Directories: []string{},
+		Files:       []string{},
+		Prompts:     Prompts{},
+		Groups:      []*Group{},
 	}
 }
 
@@ -92,7 +96,7 @@ type Metafile struct {
 	//
 	// Prompts can each define a regular expression to use for input validation.
 	// A failed validation will then re-prompt the user for value.
-	Prompts []*Prompt `json:"prompts,imitempty"`
+	Prompts Prompts `json:"prompts,imitempty"`
 
 	// Actions are groups of definitions of external actions to perform at
 	// various stages of Template execution. In each Action group
@@ -256,11 +260,24 @@ type Prompt struct {
 	// Description is the prompt text presented to the user when asking for value.
 	//
 	// On stdin the format will be: "Enter a value for <Description>".
-	Description string `json:"prompt,omitempty"`
+	Description string `json:"description,omitempty"`
 	// RegEx is the regular expression to use to validate the input string.
 	// If RegEx is not set no validation will be performed on input in addition
 	// to an empty value being accepted as a value.
 	RegExp string `json:"regexp,omitempty"`
+}
+
+// Prompts is a slice of *Prompt.
+type Prompts []*Prompt
+
+// FindByVariable returns a Prompt that defines variable or nil if not found.
+func (self Prompts) FindByVariable(variable string) *Prompt {
+	for _, prompt := range self {
+		if prompt.Variable == variable {
+			return prompt
+		}
+	}
+	return nil
 }
 
 // Validate validates that metadata is properly formatted.

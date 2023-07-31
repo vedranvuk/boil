@@ -2,7 +2,6 @@ package newt
 
 import (
 	"fmt"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
@@ -49,9 +48,6 @@ func (self *state) Run(config *Config) (err error) {
 	if self.metafile, err = self.repo.NewTemplate(config.TemplatePath); err != nil {
 		return fmt.Errorf("create new template: %w", err)
 	}
-	self.metafile.Author.Name = self.config.Configuration.DefaultAuthor.Name
-	self.metafile.Author.Email = self.config.Configuration.DefaultAuthor.Email
-	self.metafile.Author.Homepage = self.config.Configuration.DefaultAuthor.Homepage
 	if err = boil.NewWizard(self.config.Configuration, self.metafile).Execute(); err != nil {
 		return fmt.Errorf("execute wizard: %w", err)
 	}
@@ -59,17 +55,5 @@ func (self *state) Run(config *Config) (err error) {
 		return
 	}
 	self.vars["TemplatePath"] = filepath.Join(self.repo.Location(), config.TemplatePath)
-
-	var args []string
-	for _, arg := range config.Configuration.Editor.Arguments {
-		args = append(args, self.vars.ReplacePlaceholders(arg))
-	}
-	cmd := exec.Command(config.Configuration.Editor.Program, args...)
-	var buf []byte
-	buf, err = cmd.Output()
-	fmt.Print(string(buf))
-	if err != nil {
-		return fmt.Errorf("exec editor on '%s': %w", cmd.Path, err)
-	}
-	return nil
+	return self.config.Configuration.Editor.Execute(self.vars)
 }

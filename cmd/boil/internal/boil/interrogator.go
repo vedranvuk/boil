@@ -2,10 +2,12 @@ package boil
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
 	"strings"
+	"text/tabwriter"
 )
 
 // Interrogator interrigates the user via some reader and writer.
@@ -53,31 +55,44 @@ func (self *Interrogator) AskValue(def, regex string) (result string, err error)
 				continue
 			}
 		}
+		if result == "" {
+			result = def
+		}
 		break
 	}
 	return
 }
 
 // AskChoice asks for one of the specified choices on a new line.
+// A choice argument may be a single tab delimited string where left of tab is
+// the choice word and right of tab is the short description.
 // Returns def if an empty string was entered.
 // Repeats the question until one of the choices is given.
 // If an error occurs it is returned with an empty result, nil otherwise.
 func (self *Interrogator) AskChoice(def string, choices ...string) (result string, err error) {
 PrintChoices:
+	var wr = tabwriter.NewWriter(self.rw, 2, 2, 2, 32, 0)
 	self.Printf("Choose a value (Default: '%s'):\n", def)
 	for _, v := range choices {
-		self.Printf("* %s\n", v)
+		fmt.Fprintf(wr, "%s\n", v)
+	}
+	if err = wr.Flush(); err != nil {
+		return
+	}
+	if err = self.rw.Flush(); err != nil {
+		return
 	}
 Prompt:
 	for {
-		self.Printf("\nEnter value:\n")
 		if result, err = self.rw.ReadString('\n'); err != nil {
 			return
 		}
+		result, _, _ = strings.Cut(result, "\t")
 		if result = strings.TrimSpace(result); result == "" {
-			result = def
+			return def, nil
 		}
 		for _, choice := range choices {
+			choice, _, _ = strings.Cut(choice, "\t")
 			if result == choice {
 				break Prompt
 			}
@@ -89,11 +104,14 @@ Prompt:
 }
 
 // AskYesNo asks for a "yes" or a "no".
-func (self *Interrogator) AskYesNo() (result bool, err error) {
+func (self *Interrogator) AskYesNo(def string) (result bool, err error) {
 
 	var response string
 
-	if response, err = self.AskChoice("no", "yes", "no"); err != nil {
+	if def != "yes" && def != "no" {
+		return false, errors.New("askyesno: default value may be 'yes' or")
+	}
+	if response, err = self.AskChoice(def, "yes", "no"); err != nil {
 		return
 	}
 
@@ -126,13 +144,9 @@ func (self *Interrogator) AskVariable() (key, value string, err error) {
 
 	self.Printf("Define a variable.\n")
 
-	self.Printf("Name (Enter empty string to stop):\n")
+	self.Printf("Name:\n")
 	if key, err = self.AskValue("", ".*"); err != nil {
 		return "", "", err
-	}
-
-	if key == "" {
-		return "", "", nil
 	}
 
 	self.Printf("Value:\n")

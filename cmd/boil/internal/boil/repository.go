@@ -199,7 +199,7 @@ func (self DiskRepository) NewDirectory(path string) (err error) {
 		return fmt.Errorf("invalid filename %s", path)
 	}
 
-	return os.MkdirAll(path, os.ModePerm)
+	return os.MkdirAll(fn, os.ModePerm)
 }
 
 // NewFile implements Repository.NewFile.

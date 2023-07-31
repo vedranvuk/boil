@@ -87,11 +87,41 @@
 			"type": "go",
 			"request": "launch",
 			"mode": "auto",
+			"console": "integratedTerminal",
 			"program": "${workspaceFolder}/cmd/boil",
 			"args": [
+				"-v",
 				"new",
 				"test"
 			]
-		}
+		},
+		{
+			"name": "boil edit snapshot prompts",
+			"type": "go",
+			"request": "launch",
+			"mode": "auto",
+			"console": "integratedTerminal",
+			"program": "${workspaceFolder}/cmd/boil",
+			"args": [
+				"-v",
+				"edit",
+				"snapshot",
+				"prompts"
+			]
+		},
+		{
+			"name": "boil edit test all",
+			"type": "go",
+			"request": "launch",
+			"mode": "auto",
+			"console": "integratedTerminal",
+			"program": "${workspaceFolder}/cmd/boil",
+			"args": [
+				"-v",
+				"edit",
+				"test",
+				"all"
+			]
+		},
 	]
 }
