@@ -96,6 +96,19 @@
 			]
 		},
 		{
+			"name": "boil new test/test",
+			"type": "go",
+			"request": "launch",
+			"mode": "auto",
+			"console": "integratedTerminal",
+			"program": "${workspaceFolder}/cmd/boil",
+			"args": [
+				"-v",
+				"new",
+				"test/test"
+			]
+		},
+		{
 			"name": "boil edit snapshot prompts",
 			"type": "go",
 			"request": "launch",

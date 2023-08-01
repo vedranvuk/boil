@@ -21,8 +21,8 @@ const version = "0.0.0-alpha"
 
 var (
 	err           error
-	programConfig *boil.Configuration // boil configuration
-	cmdlineConfig *cmdline.Config     // command line configuration
+	programConfig *boil.Config    // boil configuration
+	cmdlineConfig *cmdline.Config // command line configuration
 )
 
 func main() {
@@ -126,6 +126,11 @@ func main() {
 				Name: "new",
 				Help: "Create a new blank template and edit it.",
 				Options: cmdline.Options{
+					&cmdline.Boolean{
+						LongName:  "overwrite",
+						ShortName: "w",
+						Help:      "Force overwrite if template exists",
+					},
 					&cmdline.Indexed{
 						Name: "template-path",
 						Help: "Name of the template to create.",
@@ -134,6 +139,7 @@ func main() {
 				Handler: func(c cmdline.Context) error {
 					return newt.Run(&newt.Config{
 						TemplatePath:  c.RawValues("template-path").First(),
+						Overwrite:     c.IsParsed("overwrite"),
 						Configuration: programConfig,
 					})
 				},
@@ -198,9 +204,9 @@ func main() {
 				},
 				Handler: func(c cmdline.Context) error {
 					return edit.Run(&edit.Config{
-						TemplatePath:  c.RawValues("template-path").First(),
-						EditAction:    "edit",
-						Configuration: programConfig,
+						TemplatePath: c.RawValues("template-path").First(),
+						EditAction:   "edit",
+						Config:       programConfig,
 					})
 				},
 				SubCommands: cmdline.Commands{
@@ -215,14 +221,64 @@ func main() {
 						Handler: handleEditSubCommand,
 					},
 					{
-						Name:    "files",
-						Help:    "Edit list of referenced files.",
+						Name: "file",
+						Help: "Edit a template file. (Omit action to open file with editor)",
+						Options: cmdline.Options{
+							&cmdline.Indexed{
+								Name: "file-path",
+								Help: "Path of file to edit relative to template directory.",
+							},
+						},
 						Handler: handleEditSubCommand,
+						SubCommands: cmdline.Commands{
+							{
+								Name:    "touch",
+								Help:    "Create a new file at specified path if it does not exist.",
+								Handler: handleEditSubCommand,
+								Options: cmdline.Options{
+									&cmdline.Boolean{
+										LongName:  "edit",
+										ShortName: "e",
+										Help:      "Open file with editor afterwards",
+									},
+								},
+							},
+							{
+								Name:    "delete",
+								Help:    "Delete a file at specified path.",
+								Handler: handleEditSubCommand,
+							},
+						},
 					},
 					{
-						Name:    "dirs",
-						Help:    "Edit list of references directories.",
+						Name: "directory",
+						Help: "Edit a directory. (Omit action to open directory with editor)",
+						Options: cmdline.Options{
+							&cmdline.Indexed{
+								Name: "directory-path",
+								Help: "Path of the directory to edit relative to template directory.",
+							},
+						},
 						Handler: handleEditSubCommand,
+						SubCommands: cmdline.Commands{
+							{
+								Name:    "add",
+								Help:    "Add a new directory at specified path.",
+								Handler: handleEditSubCommand,
+							},
+							{
+								Name:    "remove",
+								Help:    "Remove a directory at specified path.",
+								Handler: handleEditSubCommand,
+								Options: cmdline.Options{
+									&cmdline.Boolean{
+										LongName:  "force",
+										ShortName: "f",
+										Help:      "Force removal of non-empty directories.",
+									},
+								},
+							},
+						},
 					},
 					{
 						Name:    "prompts",
@@ -320,8 +376,10 @@ func main() {
 // handleEditSubCommand handles the edit command and all of its subcommands.
 func handleEditSubCommand(c cmdline.Context) error {
 	return edit.Run(&edit.Config{
-		TemplatePath:  c.GetParentCommand().Options.RawValues("template-path").First(),
-		EditAction:    c.GetCommand().Name,
-		Configuration: programConfig,
+		TemplatePath:           c.GetParentCommand().Options.RawValues("template-path").First(),
+		EditAction:             c.GetCommand().Name,
+		ForceRemoveNonEmptyDir: c.IsParsed("force") && c.GetCommand().Name == "remove",
+		EditAfterTouch:         c.IsParsed("edit") && c.GetCommand().Name == "touch",
+		Config:                 programConfig,
 	})
 }

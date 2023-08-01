@@ -9,7 +9,7 @@ import (
 type Config struct {
 	TemplatePath string
 	// Configuration is the loaded program configuration.
-	Configuration *boil.Configuration
+	Configuration *boil.Config
 }
 
 // Run executes the SNapshot command configured by config.

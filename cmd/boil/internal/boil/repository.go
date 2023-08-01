@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -39,12 +38,6 @@ type Repository interface {
 	// is returned.
 	NewDirectory(string) error
 
-	// NewFile creates a new file at the specified path relative to the
-	// repository root and returns nil on success of error if the target file
-	// already exists. if the path is invalid or other error occurs it is
-	// returned.
-	NewFile(string) (File, error)
-
 	// OpenOrCreate opens an existing file or creates one if it doesnt exists
 	// and returns it or an error if one occurs. File is open in rwr mode.
 	OpenOrCreate(string) (File, error)
@@ -73,7 +66,7 @@ type Repository interface {
 // * local filesystem (DiskRepository)
 //
 // If an error occurs it is returned with a nil repository.
-func OpenRepository(config *Configuration) (repo Repository, err error) {
+func OpenRepository(config *Config) (repo Repository, err error) {
 
 	var path = config.GetRepositoryPath()
 	// TODO: Detect repository path and return an appropriate implementaiton.
@@ -109,11 +102,11 @@ func OpenRepository(config *Configuration) (repo Repository, err error) {
 // It is initialized from an absolute filesystem path or a path relative to the
 // current working directory.
 type DiskRepository struct {
-	config *Configuration
+	config *Config
 }
 
 // NewDiskRepository returns a new DiskRepository rooted at root.
-func NewDiskRepository(config *Configuration) *DiskRepository {
+func NewDiskRepository(config *Config) *DiskRepository {
 	return &DiskRepository{config}
 }
 
@@ -158,29 +151,37 @@ func (self DiskRepository) NewTemplate(path string) (meta *Metafile, err error) 
 		return
 	}
 
-	var root = self.config.GetRepositoryPath()
-	var fn = filepath.Join(root, path)
+	var (
+		root = self.config.GetRepositoryPath()
+		fn   = filepath.Join(root, path)
+	)
+
 	if !strings.HasPrefix(fn, root) {
 		return nil, fmt.Errorf("invalid filename %s", path)
 	}
 
 	meta = NewMetafile(self.config)
 	meta.Name = filepath.Base(path)
+	meta.path = path
 
 	return
 }
 
-// SaveTemplate implements
+// SaveTemplate implements Repository.SaveTemplate.
 func (self DiskRepository) SaveTemplate(metafile *Metafile) (err error) {
+	if metafile.path == "" {
+		panic("savetemplate: metafile has no path")
+	}
 	var buf []byte
 	if buf, err = json.MarshalIndent(metafile, "", "\t"); err != nil {
 		return fmt.Errorf("marshal metafile: %w", err)
 	}
-	if err = self.NewDirectory(metafile.Name); err != nil {
+	if err = self.NewDirectory(metafile.path); err != nil {
 		return
 	}
-	var path = filepath.Join(self.config.GetRepositoryPath(), metafile.Name, MetafileName)
-	if err = ioutil.WriteFile(path, buf, os.ModePerm); err != nil {
+	var path = filepath.Join(self.config.GetRepositoryPath(), metafile.path, MetafileName)
+
+	if err = os.WriteFile(path, buf, os.ModePerm); err != nil {
 		return fmt.Errorf("write metafile: %w", err)
 	}
 	return nil
@@ -200,22 +201,6 @@ func (self DiskRepository) NewDirectory(path string) (err error) {
 	}
 
 	return os.MkdirAll(fn, os.ModePerm)
-}
-
-// NewFile implements Repository.NewFile.
-func (self DiskRepository) NewFile(path string) (file File, err error) {
-
-	if err = IsValidTemplatePath(path); err != nil {
-		return
-	}
-
-	var root = self.config.GetRepositoryPath()
-	var fn = filepath.Join(root, path)
-	if !strings.HasPrefix(fn, root) {
-		return nil, fmt.Errorf("invalid filename %s", path)
-	}
-
-	return os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_RDWR, os.ModePerm)
 }
 
 func (self DiskRepository) OpenOrCreate(path string) (file File, err error) {

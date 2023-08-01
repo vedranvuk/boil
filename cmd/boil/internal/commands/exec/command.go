@@ -45,7 +45,7 @@ type Config struct {
 	Vars boil.Variables
 
 	// Configuration is the loaded program configuration.
-	Configuration *boil.Configuration
+	Configuration *boil.Config
 }
 
 // ShouldPrint returns true if Config.Verbose or Config.NoExecute is true.

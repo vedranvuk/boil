@@ -11,7 +11,7 @@ type Config struct {
 	// Prefix is the path prefix at which to start listing.
 	Prefix string
 	// Config is the loaded program configuration.
-	Configuration *boil.Configuration
+	Configuration *boil.Config
 }
 
 func Run(config *Config) (err error) {

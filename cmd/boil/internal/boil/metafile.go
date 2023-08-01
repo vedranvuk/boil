@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -17,7 +16,7 @@ import (
 const MetafileName = "boil.json"
 
 // NewMetafile returns a new metfile initialized to defaults from config.
-func NewMetafile(config *Configuration) *Metafile {
+func NewMetafile(config *Config) *Metafile {
 	return &Metafile{
 		Author: &Author{
 			Name:     config.DefaultAuthor.Name,
@@ -148,8 +147,9 @@ type Metafile struct {
 	// path would be 'apps/base'.
 	Groups []*Group `json:"groups,omitempty"`
 
-	// directory is the directory from which Metafile was loaded from.
-	directory string
+	// path is where metafile resides, relative to the repository root.
+	// it is equal to template path minus the optional group name.
+	path string
 }
 
 func (self *Metafile) Print() {
@@ -215,13 +215,13 @@ var errNoMetadata = errors.New("no metadata found")
 // LoadMetafileFromDir loads metadata from dir and returns it or an error.
 func LoadMetafileFromDir(dir string) (metadata *Metafile, err error) {
 	var buf []byte
-	if buf, err = ioutil.ReadFile(filepath.Join(dir, MetafileName)); err != nil {
+	if buf, err = os.ReadFile(filepath.Join(dir, MetafileName)); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, errNoMetadata
 		}
 		return nil, fmt.Errorf("stat metafile: %w", err)
 	}
-	metadata = &Metafile{directory: dir}
+	metadata = &Metafile{path: dir}
 	if err = json.Unmarshal(buf, metadata); err != nil {
 		return nil, fmt.Errorf("unmarshal metafile: %w", err)
 	}

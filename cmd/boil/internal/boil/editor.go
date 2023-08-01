@@ -6,34 +6,32 @@ import (
 	"os"
 )
 
-// Wizard is the Snap command wizard.
-type Wizard struct {
-	config   *Configuration
+// Editor is a metafile editor that defines or edits metafiles using stdio for
+// user interaction.
+type Editor struct {
+	config   *Config
 	metafile *Metafile
 	*Interrogator
 }
 
-// NewWizard returns a new *Wizard.
-func NewWizard(config *Configuration, metafile *Metafile) *Wizard {
-	return &Wizard{
+// NewEditor returns a new metafile *Editor configured by config.
+func NewEditor(config *Config, metafile *Metafile) *Editor {
+	return &Editor{
 		config:       config,
 		metafile:     metafile,
 		Interrogator: NewInterrogator(os.Stdin, os.Stdout),
 	}
 }
 
-func (self *Wizard) Execute() (err error) {
+// Wizard executes a wizard that completely defines the metafile being edited.
+func (self *Editor) Wizard() (err error) {
 
-	var (
-		truth bool
-	)
+	var truth bool
 
 	self.Printf("New template wizard\n\n")
-
 	if err = self.EditInfo(); err != nil {
 		return
 	}
-
 	self.Printf("Would you like to define some Prompts?\n")
 	if truth, err = self.AskYesNo("no"); err != nil {
 		return err
@@ -42,7 +40,6 @@ func (self *Wizard) Execute() (err error) {
 			return
 		}
 	}
-
 	self.Printf("Would you like to define some Pre-Parse actions?\n")
 	if truth, err = self.AskYesNo("no"); err != nil {
 		return err
@@ -51,7 +48,6 @@ func (self *Wizard) Execute() (err error) {
 			return
 		}
 	}
-
 	self.Printf("Would you like to define some Pre-Execute actions?\n")
 	if truth, err = self.AskYesNo("no"); err != nil {
 		return err
@@ -60,7 +56,6 @@ func (self *Wizard) Execute() (err error) {
 			return
 		}
 	}
-
 	self.Printf("Would you like to define some Post-Execute actions?\n")
 	if truth, err = self.AskYesNo("no"); err != nil {
 		return err
@@ -69,13 +64,11 @@ func (self *Wizard) Execute() (err error) {
 			return
 		}
 	}
-
 	self.Printf("Template defined.\n")
-
 	return
 }
 
-func (self *Wizard) definePrompts() (result []*Prompt, err error) {
+func (self *Editor) definePrompts() (result []*Prompt, err error) {
 
 	var (
 		prompt *Prompt
@@ -83,28 +76,21 @@ func (self *Wizard) definePrompts() (result []*Prompt, err error) {
 	)
 
 	for {
+		self.Printf("New Prompt:\n")
 		prompt = new(Prompt)
 
-		self.Printf("New Prompt:\n")
-
-		self.Printf("Variable name (enter empty value to abort):\n")
-		if prompt.Variable, err = self.AskValue("", ".*"); err != nil {
+		if prompt.Variable, err = self.AskValue("Variable", "", ".*"); err != nil {
 			return
 		}
 		if prompt.Variable == "" {
 			return nil, nil
 		}
-
-		self.Printf("Variable description:\n")
-		if prompt.Description, err = self.AskValue("", ".*"); err != nil {
+		if prompt.Description, err = self.AskValue("Description", "", ".*"); err != nil {
 			return
 		}
-
-		self.Printf("Value validation Regular Expression:\n")
-		if prompt.RegExp, err = self.AskValue(".*", ".*"); err != nil {
+		if prompt.RegExp, err = self.AskValue("Regular Expression", ".*", ".*"); err != nil {
 			return
 		}
-
 		result = append(result, prompt)
 
 		self.Printf("Would you like to define another Prompt?\n")
@@ -119,7 +105,7 @@ func (self *Wizard) definePrompts() (result []*Prompt, err error) {
 	return
 }
 
-func (self *Wizard) defineActions(actions *Actions) (err error) {
+func (self *Editor) defineActions(actions *Actions) (err error) {
 
 	var (
 		action *Action
@@ -144,26 +130,19 @@ func (self *Wizard) defineActions(actions *Actions) (err error) {
 	return
 }
 
-func (self *Wizard) defineAction() (action *Action, err error) {
-
-	action = new(Action)
+func (self *Editor) defineAction() (action *Action, err error) {
 
 	var truth bool
-
+	action = new(Action)
 	self.Printf("New Action:\n")
 
-	self.Printf("Description:\n")
-	if action.Description, err = self.AskValue("", ".*"); err != nil {
+	if action.Description, err = self.AskValue("Description", "", ".*"); err != nil {
 		return
 	}
-
-	self.Printf("Program:\n")
-	if action.Program, err = self.AskValue("", ".*"); err != nil {
+	if action.Program, err = self.AskValue("Program", "", ".*"); err != nil {
 		return
 	}
-
-	self.Printf("Working directory:\n")
-	if action.WorkDir, err = self.AskValue("", ".*"); err != nil {
+	if action.WorkDir, err = self.AskValue("Working directory", "", ".*"); err != nil {
 		return
 	}
 
@@ -191,7 +170,7 @@ func (self *Wizard) defineAction() (action *Action, err error) {
 	return
 }
 
-func (self *Wizard) defineEnvVariables() (result map[string]string, err error) {
+func (self *Editor) defineEnvVariables() (result map[string]string, err error) {
 
 	var key, val string
 	result = make(map[string]string)
@@ -218,7 +197,7 @@ func (self *Wizard) defineEnvVariables() (result map[string]string, err error) {
 	return
 }
 
-func (self *Wizard) EditAll() (err error) {
+func (self *Editor) EditAll() (err error) {
 	if err = self.EditInfo(); err != nil {
 		return
 	}
@@ -246,87 +225,59 @@ func (self *Wizard) EditAll() (err error) {
 	return nil
 }
 
-func (self *Wizard) EditInfo() (err error) {
-
-	self.Printf("Template description:\n")
+func (self *Editor) EditInfo() (err error) {
 	if self.metafile.Description, err = self.AskValue(
-		self.metafile.Description,
-		".*",
-	); err != nil {
+		"Description", self.metafile.Description, ".*"); err != nil {
 		return
 	}
-
-	self.Printf("Template author name:\n")
+	if self.metafile.Version, err = self.AskValue(
+		"Version", self.metafile.Version, ".*"); err != nil {
+		return
+	}
+	if self.metafile.URL, err = self.AskValue(
+		"URL", self.metafile.URL, ".*"); err != nil {
+		return
+	}
 	if self.metafile.Author.Name, err = self.AskValue(
-		self.metafile.Author.Name,
-		".*",
-	); err != nil {
+		"Author name", self.metafile.Author.Name, ".*"); err != nil {
 		return err
 	}
-
-	self.Printf("Template author email:\n")
 	if self.metafile.Author.Email, err = self.AskValue(
-		self.metafile.Author.Email,
-		".*",
-	); err != nil {
+		"Author email", self.metafile.Author.Email, ".*"); err != nil {
 		return
 	}
-
-	self.Printf("Template author homepage:\n")
 	if self.metafile.Author.Homepage, err = self.AskValue(
-		self.metafile.Author.Homepage,
-		".*",
-	); err != nil {
+		"Author homepage", self.metafile.Author.Homepage, ".*"); err != nil {
 		return
 	}
-
-	self.Printf("Template version:\n")
-	if self.metafile.Version, err = self.AskValue(
-		self.metafile.Version,
-		".*",
-	); err != nil {
-		return
-	}
-
-	self.Printf("Template URL:\n")
-	if self.metafile.URL, err = self.AskValue(
-		self.metafile.URL,
-		".*",
-	); err != nil {
-		return
-	}
-
 	return nil
 }
 
-func (self *Wizard) EditFiles() error {
+func (self *Editor) EditFiles() error {
 	return errors.New("not implemented")
 }
 
-func (self *Wizard) EditDirs() error {
+func (self *Editor) EditDirs() error {
 	return errors.New("not implemented")
 }
 
-func (self *Wizard) editPrompt(prompt *Prompt) (err error) {
-	self.Printf("Variable name:\n")
-	if prompt.Variable, err = self.AskValue(prompt.Variable, ".*"); err != nil {
+func (self *Editor) EditPrompt(prompt *Prompt) (err error) {
+	if prompt.Variable, err = self.AskValue(
+		"Variable", prompt.Variable, ".*"); err != nil {
 		return
 	}
-
-	self.Printf("Variable description:\n")
-	if prompt.Description, err = self.AskValue(prompt.Description, ".*"); err != nil {
+	if prompt.Description, err = self.AskValue(
+		"Description", prompt.Description, ".*"); err != nil {
 		return
 	}
-
-	self.Printf("Value validation Regular Expression:\n")
-	if prompt.RegExp, err = self.AskValue(prompt.RegExp, ".*"); err != nil {
+	if prompt.RegExp, err = self.AskValue(
+		"Regular Expression", prompt.RegExp, ".*"); err != nil {
 		return
 	}
-
 	return nil
 }
 
-func (self *Wizard) EditPrompts() (err error) {
+func (self *Editor) EditPrompts() (err error) {
 
 	// No prompts defined, ask define new
 	if len(self.metafile.Prompts) == 0 {
@@ -369,21 +320,21 @@ func (self *Wizard) EditPrompts() (err error) {
 	if prompt = self.metafile.Prompts.FindByVariable(variable); prompt == nil {
 		panic("prompt not found")
 	}
-	return self.editPrompt(prompt)
+	return self.EditPrompt(prompt)
 }
 
-func (self *Wizard) EditPreParse() error {
+func (self *Editor) EditPreParse() error {
 	return errors.New("not implemented")
 }
 
-func (self *Wizard) EditPreExec() error {
+func (self *Editor) EditPreExec() error {
 	return errors.New("not implemented")
 }
 
-func (self *Wizard) EditPostExec() error {
+func (self *Editor) EditPostExec() error {
 	return errors.New("not implemented")
 }
 
-func (self *Wizard) EditGroups() error {
+func (self *Editor) EditGroups() error {
 	return errors.New("not implemented")
 }

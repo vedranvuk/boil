@@ -1,7 +1,6 @@
 package exec
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -118,24 +117,23 @@ func produceTemplates(state *state, path string, templates *Templates) (err erro
 // variable is already defined in Data (possibly via ommand line) the value is
 // not prompted for.
 func (self Templates) PresentPrompts(data boil.Variables) (err error) {
+
+	var (
+		ui    = boil.NewInterrogator(os.Stdin, os.Stdout)
+		input string
+	)
+
 	for _, template := range self {
 		for _, prompt := range template.Metafile.Prompts {
-			fmt.Printf("Enter value for %s:\n", prompt.Description)
-			var reader = bufio.NewReader(os.Stdin)
-			var input string
-			var exists bool
-			for {
-				if _, exists = data[prompt.Variable]; exists {
-					break
-				}
-				if input, err = reader.ReadString('\n'); err != nil {
-					return fmt.Errorf("prompt input: %w", err)
-				}
-				data[prompt.Variable] = strings.TrimSpace(input)
-				break
+			if input, err = ui.AskValue(
+				fmt.Sprintf("%s (%s)", prompt.Variable, prompt.Description), "", prompt.RegExp,
+			); err != nil {
+				return err
 			}
+			data[prompt.Variable] = strings.TrimSpace(input)
 		}
 	}
+	
 	return nil
 }
 

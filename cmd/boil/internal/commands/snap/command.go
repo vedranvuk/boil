@@ -29,7 +29,7 @@ type Config struct {
 	Overwrite bool
 
 	// Configuration is the loaded program configuration.
-	Configuration *boil.Configuration
+	Configuration *boil.Config
 }
 
 // Run executes the SNapshot command configured by config.
@@ -108,7 +108,7 @@ func (self *state) Run(config *Config) (err error) {
 
 	// Template wizard
 	if config.Wizard {
-		if err = boil.NewWizard(self.config.Configuration, self.metafile).Execute(); err != nil {
+		if err = boil.NewEditor(self.config.Configuration, self.metafile).Wizard(); err != nil {
 			return fmt.Errorf("execute wizard: %w", err)
 		}
 	}

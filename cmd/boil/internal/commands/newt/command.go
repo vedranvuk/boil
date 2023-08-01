@@ -1,3 +1,8 @@
+// Copyright 2023 Vedran Vuk. All rights reserved.
+// Use of this source code is governed by a MIT
+// license that can be found in the LICENSE file.
+
+// Package edit implements boil's new command.
 package newt
 
 import (
@@ -7,20 +12,25 @@ import (
 	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
 )
 
+// Config is the New command configuration.
 type Config struct {
 	TemplatePath  string
 	Overwrite     bool
-	Configuration *boil.Configuration
+	Configuration *boil.Config
 }
 
+// Run executes the New command configured by config.
+// If an error occurs it is returned and the operation may be considered failed.
 func Run(config *Config) error { return newState().Run(config) }
 
+// newState returns a new state.
 func newState() *state {
 	return &state{
 		vars: make(boil.Variables),
 	}
 }
 
+// state is the execution state of the new command.
 type state struct {
 	config   *Config
 	repo     boil.Repository
@@ -29,6 +39,8 @@ type state struct {
 	vars     boil.Variables
 }
 
+// Run executes the New command configured by config.
+// If an error occurs it is returned and the operation may be considered failed.
 func (self *state) Run(config *Config) (err error) {
 	if self.config = config; self.config == nil {
 		return fmt.Errorf("nil config")
@@ -48,12 +60,12 @@ func (self *state) Run(config *Config) (err error) {
 	if self.metafile, err = self.repo.NewTemplate(config.TemplatePath); err != nil {
 		return fmt.Errorf("create new template: %w", err)
 	}
-	if err = boil.NewWizard(self.config.Configuration, self.metafile).Execute(); err != nil {
+	if err = boil.NewEditor(self.config.Configuration, self.metafile).Wizard(); err != nil {
 		return fmt.Errorf("execute wizard: %w", err)
 	}
 	if err = self.repo.SaveTemplate(self.metafile); err != nil {
 		return
 	}
 	self.vars["TemplatePath"] = filepath.Join(self.repo.Location(), config.TemplatePath)
-	return self.config.Configuration.Editor.Execute(self.vars)
+	return self.config.Configuration.ExternalEditor.Execute(self.vars)
 }
