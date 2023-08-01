@@ -1,6 +1,11 @@
+// Copyright 2023 Vedran Vuk. All rights reserved.
+// Use of this source code is governed by a MIT
+// license that can be found in the LICENSE file.
+
 package boil
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 )
@@ -50,7 +55,10 @@ func (self *Action) Execute(variables Variables) (err error) {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	return cmd.Run()
+	if err = cmd.Run(); err != nil && !self.NoFail {
+		return fmt.Errorf("action execution failed: %w", err)
+	}
+	return nil
 }
 
 // Actions is a slice of Action with some utilities.

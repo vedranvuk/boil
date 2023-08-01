@@ -1,3 +1,7 @@
+// Copyright 2023 Vedran Vuk. All rights reserved.
+// Use of this source code is governed by a MIT
+// license that can be found in the LICENSE file.
+
 package exec
 
 import (
@@ -124,6 +128,11 @@ func (self Templates) PresentPrompts(variables boil.Variables, undeclaredOnly bo
 		input  string
 		exists bool
 	)
+
+	// Don't even show the prompt.
+	if self.ValidateVariablesFromPrompts(variables) == nil {
+		return nil
+	}
 
 	for _, template := range self {
 		fmt.Printf("Enter variables for template '%s'\n", template.Metafile.Path)

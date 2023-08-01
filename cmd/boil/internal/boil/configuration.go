@@ -1,10 +1,13 @@
+// Copyright 2023 Vedran Vuk. All rights reserved.
+// Use of this source code is governed by a MIT
+// license that can be found in the LICENSE file.
+
 package boil
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -123,7 +126,7 @@ func (self *Config) Print() {
 // LoadFromFile loads self from filename or returns an error.
 func (self *Config) LoadFromFile(filename string) (err error) {
 	var buf []byte
-	if buf, err = ioutil.ReadFile(filename); err != nil {
+	if buf, err = os.ReadFile(filename); err != nil {
 		return fmt.Errorf("read config file: %w", err)
 	}
 	if err = json.Unmarshal(buf, self); err != nil {
@@ -188,7 +191,7 @@ func (self *Config) SaveToFile(filename string) (err error) {
 	if buf, err = json.MarshalIndent(self, "", "\t"); err != nil {
 		return fmt.Errorf("marshal config: %w", err)
 	}
-	if err = ioutil.WriteFile(filename, buf, os.ModePerm); err != nil {
+	if err = os.WriteFile(filename, buf, os.ModePerm); err != nil {
 		return fmt.Errorf("write config file: %w", err)
 	}
 	return nil
