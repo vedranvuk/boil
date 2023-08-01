@@ -1,0 +1,27 @@
+{
+	"name": "pf",
+	"description": "Go package unit.",
+	"author": {
+		"name": "Vedran",
+		"email": "vedranvuk82@gmail.com"
+	},
+	"version": "1.0.0",
+	"url": "https://",
+	"files": [
+		"$FileName.go"
+	],
+	"directories": [],
+	"prompts": [
+		{
+			"variable": "FileName",
+			"description": "Name of the file.",
+			"regexp": ".*"
+		},
+		{
+			"variable": "PackageName",
+			"description": "Name of the package file belongs to.",
+			"regexp": ".*"
+		}
+	],
+	"actions": {}
+}

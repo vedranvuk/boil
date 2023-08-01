@@ -1,0 +1,41 @@
+{
+	"name": "cmd",
+	"description": "Go command project.",
+	"author": {
+		"name": "Vedran"
+	},
+	"version": "1.0.0",
+	"url": "https://",
+	"files": [
+		"cmd/$ProjectName/main.go",
+		"README.md"
+	],
+	"directories": [],
+	"prompts": [
+		{
+			"variable": "ProjectName",
+			"description": "Name of the project",
+			"regexp": ".*"
+		},
+		{
+			"variable": "ModulePath",
+			"description": "Path of go module",
+			"regexp": ".*"
+		}
+	],
+	"actions": {
+		"postExecute": [
+			{
+				"description": "Init go module",
+				"program": "go",
+				"arguments": [
+					"mod",
+					"init",
+					"$ModulePath"
+				],
+				"workDir": "$OutputDirectory",
+				"noFail": true
+			}
+		]
+	}
+}
