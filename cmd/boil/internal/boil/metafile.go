@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -147,9 +146,11 @@ type Metafile struct {
 	// path would be 'apps/base'.
 	Groups []*Group `json:"groups,omitempty"`
 
-	// path is where metafile resides, relative to the repository root.
-	// it is equal to template path minus the optional group name.
-	path string
+	// Path is where metafile resides, relative to the repository root.
+	// it is equal to template Path minus the optional group name.
+	//
+	// Path is not stored with the template, it's runtime only.
+	Path string `json:"-"`
 }
 
 func (self *Metafile) Print() {
@@ -221,7 +222,7 @@ func LoadMetafileFromDir(dir string) (metadata *Metafile, err error) {
 		}
 		return nil, fmt.Errorf("stat metafile: %w", err)
 	}
-	metadata = &Metafile{path: dir}
+	metadata = new(Metafile)
 	if err = json.Unmarshal(buf, metadata); err != nil {
 		return nil, fmt.Errorf("unmarshal metafile: %w", err)
 	}
@@ -265,6 +266,9 @@ type Prompt struct {
 	// If RegEx is not set no validation will be performed on input in addition
 	// to an empty value being accepted as a value.
 	RegExp string `json:"regexp,omitempty"`
+	// Optional if true will not trigger an error if the variable was assigned 
+	// an empty value.
+	Optional bool `json:"optional,omitempty"`
 }
 
 // Prompts is a slice of *Prompt.
@@ -311,66 +315,6 @@ func (self Metafile) ExecPostExecuteActions(variables Variables) error {
 
 // Metamap maps a Template path to its Metadata.
 type Metamap map[string]*Metafile
-
-// MetamapFromDir loads metadata from root directory recursively walking all
-// child subdirectories and returns it or returns a descriptive error if one
-// occurs.
-//
-// The resulting Metamap will contain a *Metadata for each subdirectory at any
-// level in the root directory that contains a Metafile, i.e. defines a
-// Template, under a key that will be a path relative to specified root.
-//
-// The resulting Metamap will also contain aliases for each Group defined in a
-// Metafile where the last element of the path will be the name of the group
-// instead of the Template that defines the group and will carry a pointer to
-// the same Metadata as the parent Template.
-//
-// If root contains metadata i.e. is a Template itself an the key for the entry
-// for it be set to current dirrectory: ".".
-func MetamapFromDir(root string) (metamap Metamap, err error) {
-
-	metamap = make(Metamap)
-
-	var metadata *Metafile
-	if err = filepath.Walk(root, func(path string, info fs.FileInfo, err error) error {
-
-		if !info.IsDir() {
-			return nil
-		}
-		if err != nil {
-			return fmt.Errorf("walk error: %w", err)
-		}
-
-		if metadata, err = LoadMetafileFromDir(path); err != nil {
-			if !errors.Is(err, errNoMetadata) {
-				return err
-			}
-		}
-		if metadata == nil {
-			return nil
-		}
-
-		var key string
-		if key = strings.TrimPrefix(path, root); key != "" {
-			key = strings.TrimPrefix(key, string(os.PathSeparator))
-		} else {
-			key = "."
-		}
-		metamap[key] = metadata
-
-		if metadata.Groups == nil {
-			return nil
-		}
-		for _, multi := range metadata.Groups {
-			metamap[fmt.Sprintf("%s#%s", key, multi.Name)] = metadata
-		}
-
-		return nil
-	}); err != nil {
-		err = fmt.Errorf("load metamap from directory: %w", err)
-	}
-	return
-}
 
 // Metafile returns metadata for a path. If the path is invalid or no metadata
 // for path exists an error is returned.

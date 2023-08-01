@@ -83,10 +83,16 @@ func (self *Interrogator) AskChoice(def string, choices ...string) (result strin
 	}
 PrintChoices:
 	var wr = tabwriter.NewWriter(self.rw, 2, 2, 2, 32, 0)
-	self.Printf("Choose a value [%s]: ", def)
 	for _, v := range choices {
 		fmt.Fprintf(wr, "%s\n", v)
 	}
+	if err = wr.Flush(); err != nil {
+		return
+	}
+	if err = self.Flush(); err != nil {
+		return
+	}
+	self.Printf("Choose a value [%s]: ", def)
 	if err = wr.Flush(); err != nil {
 		return
 	}
@@ -119,12 +125,15 @@ Prompt:
 // If a word other than "yes" and "no" is entered the prompt is repeated.
 // The value of def must be "yes" or "no" or an error is returned.
 // If an error occurs returns empty result and an error or nil otherwise.
-func (self *Interrogator) AskYesNo(def string) (result bool, err error) {
+func (self *Interrogator) AskYesNo(def bool) (result bool, err error) {
 	var response string
-	if def != "yes" && def != "no" {
-		return false, errors.New("askyesno: default value may be 'yes' or 'no'")
+	var d string
+	if def {
+		d = "yes"
+	} else {
+		d = "no"
 	}
-	if response, err = self.AskChoice(def, "yes", "no"); err != nil {
+	if response, err = self.AskChoice(d, "yes", "no"); err != nil {
 		return
 	}
 	return response == "yes", nil

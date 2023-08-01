@@ -31,14 +31,19 @@ type Config struct {
 	// TargetPath is adjusted to an absolute path of OutputDir during Run().
 	OutputDir string
 
-	// NoExecute, if true will not execute any write operations and will
-	// instead print out the operations like boil.Config.Verbose was enabled.
-	NoExecute bool
-
 	// Overwrite, if true specifies that any file matching a Template output
 	// file already existing in the target directory may be overwritten without
 	// prompting the user or generating an error.
 	Overwrite bool
+
+	// NoExecute if true will not execute any write operations and will
+	// instead print out the operations like boil.Config.Verbose was enabled.
+	NoExecute bool
+
+	// NoPrompts if true disables prompting the user for variables and will
+	// return an error if a variable declared in a prompt was not parsed from
+	// the command line.
+	NoPrompts bool
 
 	// Vars are variables given by the user on command line.
 	// These variables will be available via .Vars template field.
@@ -135,8 +140,14 @@ func Run(config *Config) (err error) {
 		return fmt.Errorf("pre parse action failed: %w", err)
 	}
 
-	if err = state.Templates.PresentPrompts(state.Data.Vars); err != nil {
-		return fmt.Errorf("prompt user for input data: %w", err)
+	if !config.NoPrompts {
+		if err = state.Templates.PresentPrompts(state.Data.Vars, true); err != nil {
+			return fmt.Errorf("prompt user for input data: %w", err)
+		}
+	} else {
+		if err = state.Templates.ValidateVariablesFromPrompts(state.Data.Vars); err != nil {
+			return err
+		}
 	}
 
 	if err = state.Templates.ExpandExecutionTargets(state.Data); err != nil {

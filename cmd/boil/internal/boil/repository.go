@@ -141,6 +141,70 @@ func (self DiskRepository) LoadMetamap() (m Metamap, err error) {
 	return MetamapFromDir(self.config.GetRepositoryPath())
 }
 
+// MetamapFromDir loads metadata from root directory recursively walking all
+// child subdirectories and returns it or returns a descriptive error if one
+// occurs.
+//
+// The resulting Metamap will contain a *Metadata for each subdirectory at any
+// level in the root directory that contains a Metafile, i.e. defines a
+// Template, under a key that will be a path relative to specified root.
+//
+// The resulting Metamap will also contain aliases for each Group defined in a
+// Metafile where the last element of the path will be the name of the group
+// instead of the Template that defines the group and will carry a pointer to
+// the same Metadata as the parent Template.
+//
+// If root contains metadata i.e. is a Template itself an the key for the entry
+// for it be set to current dirrectory: ".".
+func MetamapFromDir(root string) (metamap Metamap, err error) {
+
+	metamap = make(Metamap)
+
+	var metadata *Metafile
+	if err = filepath.Walk(root, func(path string, info fs.FileInfo, err error) error {
+
+		if !info.IsDir() {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("walk error: %w", err)
+		}
+
+		if metadata, err = LoadMetafileFromDir(path); err != nil {
+			if !errors.Is(err, errNoMetadata) {
+				return err
+			}
+		}
+		if metadata == nil {
+			return nil
+		}
+		if metadata.Path, err = filepath.Rel(root, path); err != nil {
+			return fmt.Errorf("rel failed: %w", err)
+		}
+
+		var key string
+		if key = strings.TrimPrefix(path, root); key != "" {
+			key = strings.TrimPrefix(key, string(os.PathSeparator))
+		} else {
+			key = "."
+		}
+		metamap[key] = metadata
+
+		if metadata.Groups == nil {
+			return nil
+		}
+		for _, multi := range metadata.Groups {
+			metamap[fmt.Sprintf("%s#%s", key, multi.Name)] = metadata
+		}
+
+		return nil
+	}); err != nil {
+		err = fmt.Errorf("load metamap from directory: %w", err)
+	}
+	return
+}
+
+
 // Location implements Repository.Location.
 func (self DiskRepository) Location() string { return self.config.GetRepositoryPath() }
 
@@ -162,24 +226,24 @@ func (self DiskRepository) NewTemplate(path string) (meta *Metafile, err error) 
 
 	meta = NewMetafile(self.config)
 	meta.Name = filepath.Base(path)
-	meta.path = path
+	meta.Path = path
 
 	return
 }
 
 // SaveTemplate implements Repository.SaveTemplate.
 func (self DiskRepository) SaveTemplate(metafile *Metafile) (err error) {
-	if metafile.path == "" {
+	if metafile.Path == "" {
 		panic("savetemplate: metafile has no path")
 	}
 	var buf []byte
 	if buf, err = json.MarshalIndent(metafile, "", "\t"); err != nil {
 		return fmt.Errorf("marshal metafile: %w", err)
 	}
-	if err = self.NewDirectory(metafile.path); err != nil {
+	if err = self.NewDirectory(metafile.Path); err != nil {
 		return
 	}
-	var path = filepath.Join(self.config.GetRepositoryPath(), metafile.path, MetafileName)
+	var path = filepath.Join(self.config.GetRepositoryPath(), metafile.Path, MetafileName)
 
 	if err = os.WriteFile(path, buf, os.ModePerm); err != nil {
 		return fmt.Errorf("write metafile: %w", err)

@@ -33,7 +33,7 @@ func (self *Editor) Wizard() (err error) {
 		return
 	}
 	self.Printf("Would you like to define some Prompts?\n")
-	if truth, err = self.AskYesNo("no"); err != nil {
+	if truth, err = self.AskYesNo(false); err != nil {
 		return err
 	} else if truth {
 		if self.metafile.Prompts, err = self.definePrompts(); err != nil {
@@ -41,7 +41,7 @@ func (self *Editor) Wizard() (err error) {
 		}
 	}
 	self.Printf("Would you like to define some Pre-Parse actions?\n")
-	if truth, err = self.AskYesNo("no"); err != nil {
+	if truth, err = self.AskYesNo(false); err != nil {
 		return err
 	} else if truth {
 		if err = self.defineActions(&self.metafile.Actions.PreParse); err != nil {
@@ -49,7 +49,7 @@ func (self *Editor) Wizard() (err error) {
 		}
 	}
 	self.Printf("Would you like to define some Pre-Execute actions?\n")
-	if truth, err = self.AskYesNo("no"); err != nil {
+	if truth, err = self.AskYesNo(false); err != nil {
 		return err
 	} else if truth {
 		if err = self.defineActions(&self.metafile.Actions.PreExecute); err != nil {
@@ -57,7 +57,7 @@ func (self *Editor) Wizard() (err error) {
 		}
 	}
 	self.Printf("Would you like to define some Post-Execute actions?\n")
-	if truth, err = self.AskYesNo("no"); err != nil {
+	if truth, err = self.AskYesNo(false); err != nil {
 		return err
 	} else if truth {
 		if err = self.defineActions(&self.metafile.Actions.PostExecute); err != nil {
@@ -91,10 +91,14 @@ func (self *Editor) definePrompts() (result []*Prompt, err error) {
 		if prompt.RegExp, err = self.AskValue("Regular Expression", ".*", ".*"); err != nil {
 			return
 		}
+		self.Printf("Is optional (don't raise error on empty value)?\n")
+		if prompt.Optional, err = self.AskYesNo(false); err != nil {
+			return
+		}
 		result = append(result, prompt)
 
 		self.Printf("Would you like to define another Prompt?\n")
-		if truth, err = self.AskYesNo("no"); err != nil {
+		if truth, err = self.AskYesNo(false); err != nil {
 			return
 		} else if truth {
 			continue
@@ -119,7 +123,7 @@ func (self *Editor) defineActions(actions *Actions) (err error) {
 		*actions = append(*actions, action)
 
 		self.Printf("Would you like to define another Action?\n")
-		if truth, err = self.AskYesNo("no"); err != nil {
+		if truth, err = self.AskYesNo(false); err != nil {
 			return err
 		} else if truth {
 			continue
@@ -152,7 +156,7 @@ func (self *Editor) defineAction() (action *Action, err error) {
 	}
 
 	self.Printf("Would you like to define some environment variables?\n")
-	if truth, err = self.AskYesNo("no"); err != nil {
+	if truth, err = self.AskYesNo(false); err != nil {
 		return
 	} else if truth {
 		if action.Environment, err = self.defineEnvVariables(); err != nil {
@@ -161,7 +165,7 @@ func (self *Editor) defineAction() (action *Action, err error) {
 	}
 
 	self.Printf("Don't break the execution if action fails:\n")
-	if truth, err = self.AskYesNo("no"); err != nil {
+	if truth, err = self.AskYesNo(false); err != nil {
 		return
 	} else if truth {
 		action.NoFail = true
@@ -187,7 +191,7 @@ func (self *Editor) defineEnvVariables() (result map[string]string, err error) {
 		result[key] = val
 
 		self.Printf("Would you like to define another environment variable?\n")
-		if truth, err = self.AskYesNo("no"); err != nil {
+		if truth, err = self.AskYesNo(false); err != nil {
 			return
 		} else if truth {
 			continue
@@ -274,6 +278,10 @@ func (self *Editor) EditPrompt(prompt *Prompt) (err error) {
 		"Regular Expression", prompt.RegExp, ".*"); err != nil {
 		return
 	}
+	self.Printf("Is optional (don't raise error on empty value entered)?\n")
+	if prompt.Optional, err = self.AskYesNo(false); err != nil {
+		return
+	}
 	return nil
 }
 
@@ -283,7 +291,7 @@ func (self *Editor) EditPrompts() (err error) {
 	if len(self.metafile.Prompts) == 0 {
 		self.Printf("There are not prompts defined. Would you like to add one?\n")
 		var result bool
-		if result, err = self.AskYesNo("no"); err != nil {
+		if result, err = self.AskYesNo(false); err != nil {
 			return
 		}
 		if !result {
@@ -315,7 +323,7 @@ func (self *Editor) EditPrompts() (err error) {
 		return
 	}
 	if variable == "" {
-		return nil
+		return errors.New("aborted")
 	}
 	if prompt = self.metafile.Prompts.FindByVariable(variable); prompt == nil {
 		panic("prompt not found")

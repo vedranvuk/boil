@@ -111,29 +111,54 @@ func produceTemplates(state *state, path string, templates *Templates) (err erro
 
 // PresentPrompts presents a prompt to the user on command line for each of
 // the prompts defined in all Templates in self, in order as they appear in
-// self, depth first.
+// self, depth first. If undeclaredOnly is true only prompts for entries not
+// found in variables are presented.
 //
 // Values are stored in data under names of Variables they prompt for. If a
 // variable is already defined in Data (possibly via ommand line) the value is
 // not prompted for.
-func (self Templates) PresentPrompts(data boil.Variables) (err error) {
+func (self Templates) PresentPrompts(variables boil.Variables, undeclaredOnly bool) (err error) {
 
 	var (
-		ui    = boil.NewInterrogator(os.Stdin, os.Stdout)
-		input string
+		ui     = boil.NewInterrogator(os.Stdin, os.Stdout)
+		input  string
+		exists bool
 	)
 
 	for _, template := range self {
+		fmt.Printf("Enter variables for template '%s'\n", template.Metafile.Path)
 		for _, prompt := range template.Metafile.Prompts {
+			if _, exists = variables[prompt.Variable]; exists && undeclaredOnly {
+				continue
+			}
+		Repeat:
 			if input, err = ui.AskValue(
 				fmt.Sprintf("%s (%s)", prompt.Variable, prompt.Description), "", prompt.RegExp,
 			); err != nil {
 				return err
 			}
-			data[prompt.Variable] = strings.TrimSpace(input)
+			if input = strings.TrimSpace(input); !prompt.Optional && input == "" {
+				fmt.Printf("Variable '%s' may not have an empty value.\n", prompt.Variable)
+				goto Repeat
+			}
+			variables[prompt.Variable] = strings.TrimSpace(input)
 		}
 	}
-	
+
+	return nil
+}
+
+// ValidateVariablesFromPrompts returns nil on success if all prompt variables
+// of all templates in self have an entry in variables or an error otherwise.
+func (self Templates) ValidateVariablesFromPrompts(variables boil.Variables) (err error) {
+	var exists bool
+	for _, template := range self {
+		for _, prompt := range template.Metafile.Prompts {
+			if _, exists = variables[prompt.Variable]; !exists {
+				return fmt.Errorf("variable '%s' has no assigned value", prompt.Variable)
+			}
+		}
+	}
 	return nil
 }
 

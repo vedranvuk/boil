@@ -136,5 +136,19 @@
 				"all"
 			]
 		},
+		{
+			"name": "boil edit go/cmd prompts",
+			"type": "go",
+			"request": "launch",
+			"mode": "auto",
+			"console": "integratedTerminal",
+			"program": "${workspaceFolder}/cmd/boil",
+			"args": [
+				"-v",
+				"edit",
+				"go/cmd",
+				"prompts"
+			]
+		},
 	]
 }

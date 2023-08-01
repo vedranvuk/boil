@@ -325,6 +325,11 @@ func main() {
 						ShortName: "x",
 						Help:      "Print commands but do not execute them.",
 					},
+					&cmdline.Boolean{
+						LongName:  "no-prompts",
+						ShortName: "n",
+						Help:      "Don't present input prompts for missing variables.",
+					},
 					&cmdline.Optional{
 						LongName:  "output-dir",
 						ShortName: "o",
