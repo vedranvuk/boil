@@ -1,0 +1,24 @@
+{
+	"name": "boiltasks",
+	"description": "VS Code boil tasks template.",
+	"author": {
+		"name": "Vedran Vuk",
+		"email": "vedranvuk82@gmail.com",
+		"homepage": "http://"
+	},
+	"version": "1.0.0",
+	"url": "http://",
+	"files": [
+		".vscode/tasks.json"
+	],
+	"directories": [],
+	"groups": [],
+	"actions": {},
+	"prompts": [
+		{
+			"variable": "TemplateName",
+			"description": "Name of the template to execute by the default task.",
+			"regex": ".*"
+		}
+	]
+}
