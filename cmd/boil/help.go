@@ -25,6 +25,16 @@ var helpTopics = HelpTopics{
 		Print:       printOverview,
 	},
 	{
+		Topic:       "templatepath",
+		Description: "About template paths.",
+		Print:       printTemplatePath,
+	},
+	{
+		Topic:       "repository",
+		Description: "About repositories.",
+		Print:       printRepository,
+	},
+	{
 		Topic:       "exec",
 		Description: "Exec command usage.",
 		Print:       printExec,
@@ -136,7 +146,104 @@ directory structure which is reflected in the output directory when executed.
 A Template directory is identified by containing a 'boil.json' Metafile which 
 defines the Template.
 
+Metafile
 
+A Metafile defines metadata about the author, version and contact details and
+the list of files and directories comprising the Template which are to be 
+executed into target directory.
+
+	// Metadata represents a Template Metafile.
+	type Metadata struct {
+		Name        string   // Template name.
+		Description string   // Description.
+		Author      *Author  // Template Author information.
+		Version     string   // Template version.
+		URL         string   // URL is the cannonical template URL.
+		Files       []string // List of Template files.
+		Directories []string // List of Template directories.
+		Multis      []*Multi // Multi definition.
+		Actions     struct {
+			Pre  []*Command // Pre-execution commands.
+			Post []*Command // Post execution commands.
+		} // Custom actions to execute with Template.
+	}
+
+	// Multi defines a a Multi Template.
+	type Multi struct {
+		Name        string   // Name is the Multi.
+		Description string   // Description.
+		Templates   []string // Templates to execute as part of Multi.
+	}
+
+	// Author defines an author.
+	type Author struct {
+		Name 		string 	// Name is the author name in an arbitrary format.
+		Email 		string 	// Email is the author Email address.
+		Homepage 	string 	// Homepage is the author's homepage URL.
+	}
+
+	// Command defines a command to execute
+	type Command struct {
+		Name 		string 		// Name is the Command name.
+		Program 	string 		// Program path to executable.
+		Arguments 	[]string 	// Program arguments.
+	}
+
+`
+
+func printOverview() {
+	fmt.Print(overviewText)
+}
+
+const execText = `
+Usage: boil exec <template-path> [options]
+
+The exec command executes a template to a target directory.
+
+replacing placeholder 
+variables in the process and executing a template using values provided on 
+command line or extracted from a go file.
+
+If a variable declared in a prompt is specified on command line the prompt for 
+it - if prompting is enabled - will not be presented to the user.
+
+Following variables may override exec command option values:
+
+OutputDirectory output-dir
+`
+
+func printExec() {
+	cmdline.PrintCommand(os.Stdout, cmdlineConfig, cmdlineConfig.Commands.Find("exec"), 0)
+	fmt.Print(execText)
+}
+
+const templatePathText = `
+A template path is a simple relative path that addresses a template directory
+inside a repository. This format is used by all except the exec command.
+
+A template path relative to repository:
+
+  go/apps/cmdapp
+
+The exec command supports an extended template path that may address a template
+outside of the loaded repository by using an absolute path. Additonally, the 
+exec command supports a URL fragment like suffix that names a group to execute 
+defined in a template.
+
+An absolute path to a template:
+
+  /home/user/templates/apptemplate
+
+An absolute path to a template that addresses a group defined in the template:
+
+  /hom/user/templates/apptemplate#all
+`
+
+func printTemplatePath() {
+	fmt.Print(templatePathText)
+}
+
+const repositoryText = `
 Repository
 
 A Repository is any directory that contains Templates, possibly organized in a
@@ -149,7 +256,7 @@ manner customized by the user. Take for example a simple Repository structure:
 				/app
 					main.go
 			boil.json
-   		/webapp
+   		/webapp<w
 			/cmd
 				/app
 					main.go
@@ -211,66 +318,8 @@ The Templates defined inside a Multi can also be addressed directly, e.g.
 Executing a template by name that contains Multi definitions,  e.g.: 
 'multis/segmented' will only execute files and directories defined in 
 the 'segmented' Metafile but not any of the Templates defined in subdirectories.
-
-
-Metafile
-
-A Metafile defines metadata about the author, version and contact details and
-the list of files and directories comprising the Template which are to be 
-executed into target directory.
-
-	// Metadata represents a Template Metafile.
-	type Metadata struct {
-		Name        string   // Template name.
-		Description string   // Description.
-		Author      *Author  // Template Author information.
-		Version     string   // Template version.
-		URL         string   // URL is the cannonical template URL.
-		Files       []string // List of Template files.
-		Directories []string // List of Template directories.
-		Multis      []*Multi // Multi definition.
-		Actions     struct {
-			Pre  []*Command // Pre-execution commands.
-			Post []*Command // Post execution commands.
-		} // Custom actions to execute with Template.
-	}
-
-	// Multi defines a a Multi Template.
-	type Multi struct {
-		Name        string   // Name is the Multi.
-		Description string   // Description.
-		Templates   []string // Templates to execute as part of Multi.
-	}
-
-	// Author defines an author.
-	type Author struct {
-		Name 		string 	// Name is the author name in an arbitrary format.
-		Email 		string 	// Email is the author Email address.
-		Homepage 	string 	// Homepage is the author's homepage URL.
-	}
-
-	// Command defines a command to execute
-	type Command struct {
-		Name 		string 		// Name is the Command name.
-		Program 	string 		// Program path to executable.
-		Arguments 	[]string 	// Program arguments.
-	}
-
 `
 
-func printOverview() {
-	fmt.Print(overviewText)
-}
-
-const execText = `
-Usage: boil exec <template-path> [options]
-
-The exec command executes a template to a target directory replacing placeholder 
-variables in the process and executing a template using values provided on 
-command line or extracted from a go file.
-`
-
-func printExec() {
-	cmdline.PrintCommand(os.Stdout, cmdlineConfig, cmdlineConfig.Commands.Find("exec"), 0)
-	fmt.Print(execText)
+func printRepository() {
+	fmt.Print(repositoryText)
 }

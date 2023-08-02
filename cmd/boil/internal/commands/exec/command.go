@@ -93,6 +93,10 @@ type state struct {
 // If an error occurs it is returned and the operation may be considered failed.
 func Run(config *Config) (err error) {
 
+	if config.NoExecute {
+		fmt.Printf("NoExecute enabled, printing commands instead of executing.\n")
+	}
+
 	var state = &state{
 		RepositoryPath: config.GetRepositoryPath(),
 		TemplatePath:   config.TemplatePath,
@@ -101,10 +105,7 @@ func Run(config *Config) (err error) {
 		Data:           NewData(),
 	}
 
-	if config.NoExecute {
-		fmt.Printf("NoExecute enabled, printing commands instead of executing.\n")
-	}
-
+	// Parse template path and putput dir
 	if filepath.IsAbs(config.TemplatePath) {
 		// If TemplatePath is an absolute path open the Template as the
 		// Repository and adjust the template path to "current directory"
@@ -120,63 +121,58 @@ func Run(config *Config) (err error) {
 			fmt.Println("Absolute Template path specified, repository opened at template root.")
 		}
 	}
-
-	if state.Repository, err = boil.OpenRepository(state.RepositoryPath); err != nil {
-		return fmt.Errorf("open repository: %w", err)
-	}
-
 	if state.OutputDir, err = filepath.Abs(config.OutputDir); err != nil {
 		return fmt.Errorf("get absolute target path: %w", err)
 	}
-
-	if err = state.Data.InitStandardVars(state); err != nil {
-		return fmt.Errorf("initialize data: %w", err)
+	
+	// Open repo, get a list of templates to execute, run pre-parse actions.
+	if state.Repository, err = boil.OpenRepository(state.RepositoryPath); err != nil {
+		return fmt.Errorf("open repository: %w", err)
 	}
-
-	if err = state.Data.MergeVars(config.Vars); err != nil {
-		return fmt.Errorf("load user variables: %w", err)
-	}
-
-	if state.Templates, err = GetTemplatesForState(state); err != nil {
+	if state.Templates, err = GetSourceTemplates(state); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("not a boil template: %s", config.TemplatePath)
 		}
 		return fmt.Errorf("enumerate template files for execution: %w", err)
 	}
-
 	if err = state.Templates.ExecPreParseActions(); err != nil {
 		return fmt.Errorf("pre parse action failed: %w", err)
 	}
 
+	// Add vars declared on command line to state vars.
+	state.Data.Vars.AddNew(config.Vars)
+	// Show prompts for variables not satisified early on command line.
 	if !config.NoPrompts {
 		if err = state.Templates.PresentPrompts(state.Data.Vars, true); err != nil {
 			return fmt.Errorf("prompt user for input data: %w", err)
 		}
-	} else {
-		if err = state.Templates.ValidateVariablesFromPrompts(state.Data.Vars); err != nil {
-			return err
-		}
 	}
+	// Override state variables given on command line with ones given in prompt.
+	state.Data.Vars.MaybeSetString(boil.VarOutputDirectory, &state.OutputDir)
+	// Append system variables to state vars if not given
+	state.Data.Vars.AddNew(boil.Variables{
+		"TemplatePath":    state.TemplatePath,
+		"OutputDirectory": state.OutputDir,
+	})
 
-	if err = state.Templates.ExpandExecutionTargets(state.Data); err != nil {
+	// Expand variable placeholders in paths.
+	if err = state.Templates.DetermineTemplateTargets(state); err != nil {
 		return fmt.Errorf("expand target file names: %w", err)
 	}
-
+	// Validate templates, check for conflicts.
 	if err = state.Templates.Validate(state); err != nil {
 		return fmt.Errorf("validation failed: %w", err)
 	}
-
-	if config.ShouldPrint() {
-		fmt.Printf("Repository location: %s\n", state.Repository.Location())
-		state.Templates.Print()
-	}
-
 	if !config.Overwrite {
 		if err = state.Templates.CheckForTargetConflicts(); err != nil {
 			return err
 		}
 	}
-
+	// Print, run pre actions, exec template files, post actions and edit.
+	if config.ShouldPrint() {
+		fmt.Printf("Repository location: %s\n", state.Repository.Location())
+		state.Templates.Print()
+	}
 	if err = state.Templates.ExecPreExecuteActions(state.Data.Vars); err != nil {
 		return fmt.Errorf("pre execute action failed: %w", err)
 	}
@@ -186,12 +182,10 @@ func Run(config *Config) (err error) {
 	if err = state.Templates.ExecPostExecuteActions(state.Data.Vars); err != nil {
 		return fmt.Errorf("post execute action failed: %w", err)
 	}
-
 	if config.EditAfterExec {
 		if err = config.Configuration.ExternalEditor.Execute(state.Data.Vars); err != nil {
 			return
 		}
 	}
-
 	return nil
 }

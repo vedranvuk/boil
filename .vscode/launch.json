@@ -29,6 +29,7 @@
 			"type": "go",
 			"request": "launch",
 			"mode": "auto",
+			"console": "integratedTerminal",
 			"program": "${workspaceFolder}/cmd/boil",
 			"args": [
 				"-v",
@@ -50,13 +51,12 @@
 			"type": "go",
 			"request": "launch",
 			"mode": "auto",
+			"console": "integratedTerminal",
 			"program": "${workspaceFolder}/cmd/boil",
 			"args": [
 				"-v",
 				"exec",
 				"${workspaceFolder}/_testdata/testrepo/apps/cliapp#all",
-				"-o",
-				"${workspaceFolder}/_testdata/output/cliappabs",
 				"-r",
 				"ProjectName=cliapp",
 				"-r",

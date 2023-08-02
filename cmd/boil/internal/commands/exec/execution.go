@@ -18,8 +18,9 @@ import (
 
 // Execution defines the source and target of a template file to be executed.
 type Execution struct {
-	// Source is unmodified path of the source Template file relative to the
-	// loaded repository root to be executed.
+	// Path is the path of the file or dir relative to template root.
+	Path string
+	// Source is path of the template file or dir relative to repo root.
 	Source string
 	// Target is the absolute path of the target file which will contain Source
 	// template output. If the source path had placeholder values they will be
@@ -41,11 +42,11 @@ type Template struct {
 // It holds a list of groups of files to execute for a Template.
 type Templates []*Template
 
-// GetTemplatesForState returns Templates to be executed from a state. It
+// GetSourceTemplates returns Templates to be executed from a state. It
 // returns empty Templates and an error if the state is invalid, one or more
 // template files is missing, any group addresses a missing template or some
 // other error.
-func GetTemplatesForState(state *state) (templates Templates, err error) {
+func GetSourceTemplates(state *state) (templates Templates, err error) {
 	err = produceTemplates(state, state.TemplatePath, &templates)
 	return
 }
@@ -72,8 +73,8 @@ func produceTemplates(state *state, path string, templates *Templates) (err erro
 
 	for _, dir := range meta.Directories {
 		template.List = append(template.List, &Execution{
+			Path:   dir,
 			Source: filepath.Join(path, dir),
-			Target: filepath.Join(state.OutputDir, dir),
 			IsDir:  true,
 		})
 	}
@@ -86,8 +87,8 @@ func produceTemplates(state *state, path string, templates *Templates) (err erro
 			return fmt.Errorf("template file '%s' does not exist", filepath.Join(path, file))
 		}
 		template.List = append(template.List, &Execution{
+			Path:   file,
 			Source: filepath.Join(path, file),
-			Target: filepath.Join(state.OutputDir, file),
 			IsDir:  false,
 		})
 	}
@@ -126,9 +127,6 @@ func (self Templates) PresentPrompts(variables boil.Variables, undeclaredOnly bo
 		exists bool
 	)
 
-	if self.ValidateVariablesFromPrompts(variables) == nil {
-		return nil
-	}
 	fmt.Printf("Input variable values.\n")
 
 	for _, template := range self {
@@ -153,27 +151,16 @@ func (self Templates) PresentPrompts(variables boil.Variables, undeclaredOnly bo
 	return nil
 }
 
-// ValidateVariablesFromPrompts returns nil on success if all prompt variables
-// of all templates in self have an entry in variables or an error otherwise.
-func (self Templates) ValidateVariablesFromPrompts(variables boil.Variables) (err error) {
-	var exists bool
-	for _, template := range self {
-		for _, prompt := range template.Metafile.Prompts {
-			if _, exists = variables[prompt.Variable]; !exists {
-				return fmt.Errorf("variable '%s' has no assigned value", prompt.Variable)
-			}
-		}
-	}
-	return nil
-}
-
 // ExpandExecutionTargets expands all Execution.Target values of all Templates
 // in self using data and returns nil. If an error occurs it is returned and
 // self may be considered invalid in undetermined state.
-func (self Templates) ExpandExecutionTargets(data *Data) (err error) {
+func (self Templates) DetermineTemplateTargets(state *state) (err error) {
 	for _, template := range self {
 		for _, execution := range template.List {
-			execution.Target = data.ReplaceAll(execution.Target)
+			execution.Target = filepath.Join(
+				state.OutputDir,
+				state.Data.ReplaceAll(execution.Path),
+			)
 		}
 	}
 	return

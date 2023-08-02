@@ -72,6 +72,11 @@
 			"variable": "ModulePath",
 			"prompt": "Go module path",
 			"regExp": ".+"
+		},
+		{
+			"variable": "OutputDirectory",
+			"prompt": "Override output-dir from command line.",
+			"regExp": ".+"
 		}
 	]
 }

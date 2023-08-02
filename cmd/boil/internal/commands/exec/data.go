@@ -43,10 +43,11 @@ func (self *Data) InitStandardVars(state *state) error {
 }
 
 // MergeVars merges vars to self.Vars or returns an error.
+// If a key already exists and has a value an error is returned.
 func (self *Data) MergeVars(vars boil.Variables) error {
 	var exists bool
 	for k, v := range vars {
-		if _, exists = self.Vars[k]; exists {
+		if _, exists = self.Vars[k]; exists && self.Vars[k] != nil {
 			return fmt.Errorf("duplicate variable '%s'", k)
 		}
 		self.Vars[k] = v

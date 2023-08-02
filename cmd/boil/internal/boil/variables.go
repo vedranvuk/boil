@@ -6,6 +6,25 @@ package boil
 
 import "strings"
 
+// Variable defines a known variable.
+type Variable int
+
+const (
+	// VarWorkingDirectory is always available.
+	VarWorkingDirectory Variable = iota
+	// VarTemplatePath is exec command template-path.
+	VarTemplatePath
+	// VarOutputDirectory is exec command output-dir.
+	VarOutputDirectory
+)
+
+// StdVariables is a slice of standard variables.
+var StdVariables = []string{
+	"WorkingDirectory",
+	"TemplatePath",
+	"OutputDirectory",
+}
+
 // Variables defines a map of variables keying variable names to their values.
 //
 // A variable is a value that is available to Template files on execution
@@ -26,4 +45,32 @@ func (self Variables) ReplacePlaceholders(in string) (out string) {
 		out = strings.ReplaceAll(out, "$"+k, v.(string))
 	}
 	return out
+}
+
+// MaybeSetString sets the value of out to the value of the Variable under key
+// if it exists in self and is of type string. Otherwise, out is unmodified.
+func (self Variables) MaybeSetString(key Variable, out *string) {
+	if key < 0 || int(key) >= len(StdVariables) {
+		return
+	}
+	var val, exists = self[StdVariables[key]]
+	if !exists {
+		return
+	}
+	var str, ok = val.(string)
+	if !ok {
+		return
+	}
+	*out = str
+}
+
+// AddNew adds variables that do not exist in self to self and returns self.
+func (self Variables) AddNew(variables Variables) Variables {
+	for k, v := range variables {
+		if _, exists := self[k]; exists {
+			continue
+		}
+		self[k] = v
+	}
+	return self
 }

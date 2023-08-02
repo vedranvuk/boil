@@ -116,7 +116,7 @@ func (self *Config) Print() {
 	fmt.Fprintf(wr, "DefaultAuthor.Name\t%s\n", self.DefaultAuthor.Name)
 	fmt.Fprintf(wr, "DefaultAuthor.Email\t%s\n", self.DefaultAuthor.Email)
 	fmt.Fprintf(wr, "DefaultAuthor.Homepage\t%s\n", self.DefaultAuthor.Homepage)
-	fmt.Fprintf(wr, "RepositoryPath\t%s\n", self.RepositoryPath)
+	fmt.Fprintf(wr, "RepositoryPath\t%s\n", self.GetRepositoryPath())
 	fmt.Fprintf(wr, "DisableBackup\t%t\n", self.DisableBackup)
 	fmt.Fprintf(wr, "Editor.Program\t%s\n", self.ExternalEditor.Program)
 	fmt.Fprintf(wr, "Editor.Arguments\t%v\n", self.ExternalEditor.Arguments)
