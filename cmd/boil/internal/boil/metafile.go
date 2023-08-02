@@ -5,11 +5,8 @@
 package boil
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -39,8 +36,8 @@ func NewMetafile(config *Config) *Metafile {
 // defines a Template.
 //
 // If a Template contains other Templates in some of its subdirectories it can
-// define one or more Multi Template definitions with various combinations of
-// those child templates to be executed as part of the parent Template.
+// define one or more Group definitions with various combinations of theese
+// child templates to be executed as part of the parent Template.
 type Metafile struct {
 	// Name is the Template name.
 	// It is the last element of the template path when addressing it.
@@ -157,6 +154,37 @@ type Metafile struct {
 	Path string `json:"-"`
 }
 
+// Validate validates that metadata is properly formatted.
+// It checks that multis point to valid Templates in the repo.
+// It checks for duplicate template definitions.
+func (self Metafile) Validate(repo Repository) error {
+	// TODO Implement Metafile.Validate
+	return nil
+}
+
+// ExecPreParseActions executes all PreParse Actions defined in the Metafile.
+// It returns the error of the first Action that failed and stops execution.
+// If no error occurs nil is returned.
+func (self Metafile) ExecPreParseActions() error {
+	return self.Actions.PreParse.ExecuteAll(nil)
+}
+
+// ExecPreExecuteActions executes all PreExecute Actions defined in the Metafile.
+// It returns the error of the first Action that failed and stops execution.
+// If no error occurs nil is returned.
+func (self Metafile) ExecPreExecuteActions(variables Variables) error {
+	return self.Actions.PreExecute.ExecuteAll(variables)
+}
+
+// ExecPostExecuteActions executes all PostExecute Actions defined in the Metafile.
+// It returns the error of the first Action that failed and stops execution.
+// If no error occurs nil is returned.
+func (self Metafile) ExecPostExecuteActions(variables Variables) error {
+	return self.Actions.PostExecute.ExecuteAll(variables)
+}
+
+// Print prints self to stdout.
+// TODO: better layout.
 func (self *Metafile) Print() {
 	var wr = tabwriter.NewWriter(os.Stdout, 2, 2, 2, 32, 0)
 	fmt.Fprintf(wr, "Name:\t%s\n", self.Name)
@@ -213,26 +241,6 @@ func (self *Metafile) Print() {
 	wr.Flush()
 }
 
-// errNoMetadata is returned by LoadMetadataFromDir if a metadata file
-// does not exist in specified directory.
-var errNoMetadata = errors.New("no metadata found")
-
-// LoadMetafileFromDir loads metadata from dir and returns it or an error.
-func LoadMetafileFromDir(dir string) (metadata *Metafile, err error) {
-	var buf []byte
-	if buf, err = os.ReadFile(filepath.Join(dir, MetafileName)); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil, errNoMetadata
-		}
-		return nil, fmt.Errorf("stat metafile: %w", err)
-	}
-	metadata = new(Metafile)
-	if err = json.Unmarshal(buf, metadata); err != nil {
-		return nil, fmt.Errorf("unmarshal metafile: %w", err)
-	}
-	return
-}
-
 // NewAuthor returns a new *Author.
 func NewAuthor() *Author { return &Author{} }
 
@@ -270,7 +278,7 @@ type Prompt struct {
 	// If RegEx is not set no validation will be performed on input in addition
 	// to an empty value being accepted as a value.
 	RegExp string `json:"regexp,omitempty"`
-	// Optional if true will not trigger an error if the variable was assigned 
+	// Optional if true will not trigger an error if the variable was assigned
 	// an empty value.
 	Optional bool `json:"optional,omitempty"`
 }
@@ -288,40 +296,12 @@ func (self Prompts) FindByVariable(variable string) *Prompt {
 	return nil
 }
 
-// Validate validates that metadata is properly formatted.
-// It checks that multis point to valid Templates in the repo.
-// It checks for duplicate template definitions.
-func (self Metafile) Validate(repo Repository) error {
-	// TODO Implement Metafile.Validate
-	return nil
-}
-
-// ExecPreParseActions executes all PreParse Actions defined in the Metafile.
-// It returns the error of the first Action that failed and stops execution.
-// If no error occurs nil is returned.
-func (self Metafile) ExecPreParseActions() error {
-	return self.Actions.PreParse.ExecuteAll(nil)
-}
-
-// ExecPreExecuteActions executes all PreExecute Actions defined in the Metafile.
-// It returns the error of the first Action that failed and stops execution.
-// If no error occurs nil is returned.
-func (self Metafile) ExecPreExecuteActions(variables Variables) error {
-	return self.Actions.PreExecute.ExecuteAll(variables)
-}
-
-// ExecPostExecuteActions executes all PostExecute Actions defined in the Metafile.
-// It returns the error of the first Action that failed and stops execution.
-// If no error occurs nil is returned.
-func (self Metafile) ExecPostExecuteActions(variables Variables) error {
-	return self.Actions.PostExecute.ExecuteAll(variables)
-}
-
-// Metamap maps a Template path to its Metadata.
+// Metamap maps a template path including optional group name to its Metadata.
+// Path is relative to Repository.
 type Metamap map[string]*Metafile
 
-// Metafile returns metadata for a path. If the path is invalid or no metadata
-// for path exists an error is returned.
+// Metafile returns the *Metafile for a path if it exists in self or
+// os.ErrNotExists if not. Returns an error if path is invalid.
 func (self Metamap) Metafile(path string) (*Metafile, error) {
 	if strings.HasPrefix(path, string(os.PathSeparator)) {
 		return nil, fmt.Errorf("metadata: invalid path: '%s'", path)
@@ -333,7 +313,7 @@ func (self Metamap) Metafile(path string) (*Metafile, error) {
 	return meta, nil
 }
 
-// Print printes self to stdout.
+// Print prints self to stdout.
 func (self Metamap) Print() {
 	var wr = tabwriter.NewWriter(os.Stdout, 2, 2, 2, 32, 0)
 	var a []string

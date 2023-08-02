@@ -45,9 +45,6 @@ func (self *state) Run(config *Config) (err error) {
 	if self.config = config; self.config == nil {
 		return fmt.Errorf("nil config")
 	}
-	if err = boil.IsValidTemplatePath(config.TemplatePath); err != nil {
-		return err
-	}
 	if self.repo, err = boil.OpenRepository(config.Configuration); err != nil {
 		return fmt.Errorf("open repository: %w", err)
 	}
@@ -57,13 +54,11 @@ func (self *state) Run(config *Config) (err error) {
 	if _, err = self.metamap.Metafile(config.TemplatePath); err == nil && !config.Overwrite {
 		return fmt.Errorf("template %s already exists", config.TemplatePath)
 	}
-	if self.metafile, err = self.repo.NewTemplate(config.TemplatePath); err != nil {
-		return fmt.Errorf("create new template: %w", err)
-	}
+	self.metafile = boil.NewMetafile(config.Configuration)
 	if err = boil.NewEditor(self.config.Configuration, self.metafile).Wizard(); err != nil {
 		return fmt.Errorf("execute wizard: %w", err)
 	}
-	if err = self.repo.SaveTemplate(self.metafile); err != nil {
+	if err = self.repo.SaveMeta(self.metafile); err != nil {
 		return
 	}
 	self.vars["TemplatePath"] = filepath.Join(self.repo.Location(), config.TemplatePath)

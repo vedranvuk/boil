@@ -105,7 +105,7 @@ func (self *state) Run(config *Config) (err error) {
 	if config.Config.Overrides.Verbose {
 		self.metafile.Print()
 	}
-	return self.repo.SaveTemplate(self.metafile)
+	return self.repo.SaveMeta(self.metafile)
 }
 
 var errNotImplemented = errors.New("not implemented")

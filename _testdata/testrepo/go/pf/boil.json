@@ -19,7 +19,7 @@
 		},
 		{
 			"variable": "PackageName",
-			"description": "Name of the package file belongs to.",
+			"description": "File's package clause identifier.",
 			"regexp": ".*"
 		}
 	],

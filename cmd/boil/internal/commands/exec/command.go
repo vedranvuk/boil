@@ -103,7 +103,7 @@ func Run(config *Config) (err error) {
 		fmt.Printf("NoExecute enabled, printing commands instead of executing.\n")
 	}
 
-	if boil.TemplatePathIsAbsolute(config.TemplatePath) {
+	if filepath.IsAbs(config.TemplatePath) {
 		// If TemplatePath is an absolute path open the Template as the
 		// Repository and adjust the template path to "current directory"
 		// pointing to repository root.

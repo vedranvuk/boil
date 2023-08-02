@@ -7,7 +7,6 @@ package exec
 import (
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,8 +31,6 @@ type Execution struct {
 
 // Template defines a list of template files to execute for a Template.
 type Template struct {
-	// Name is the name of the template.
-	Name string
 	// Metafile is the Template Metafile.
 	Metafile *boil.Metafile
 	// List is a list of executions to be performed as for this template.
@@ -58,26 +55,23 @@ func GetTemplatesForState(state *state) (templates Templates, err error) {
 func produceTemplates(state *state, path string, templates *Templates) (err error) {
 
 	var (
-		meta  *boil.Metafile
-		group string
+		meta   *boil.Metafile
+		group  string
+		exists bool
 	)
 
-	path, group = boil.ParseTemplatePath(path)
+	path, group, _ = strings.Cut(path, "#")
 
-	if meta, err = state.Metamap.Metafile(path); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return err
-		}
-		return fmt.Errorf("load template: '%w'", err)
+	if meta, exists = state.Metamap[path]; !exists {
+		return fmt.Errorf("template not found: '%s'", path)
 	}
 
-	var list = &Template{
-		Name:     meta.Name,
+	var template = &Template{
 		Metafile: meta,
 	}
 
 	for _, dir := range meta.Directories {
-		list.List = append(list.List, &Execution{
+		template.List = append(template.List, &Execution{
 			Source: filepath.Join(path, dir),
 			Target: filepath.Join(state.OutputDir, dir),
 			IsDir:  true,
@@ -85,17 +79,20 @@ func produceTemplates(state *state, path string, templates *Templates) (err erro
 	}
 
 	for _, file := range meta.Files {
-		if _, err := fs.Stat(state.Repository, filepath.Join(path, file)); err != nil {
-			return fmt.Errorf("stat template file '%s': %w", file, err)
+		if exists, err = state.Repository.Exists(filepath.Join(path, file)); err != nil {
+			return err
 		}
-		list.List = append(list.List, &Execution{
+		if !exists {
+			return fmt.Errorf("template file '%s' does not exist", filepath.Join(path, file))
+		}
+		template.List = append(template.List, &Execution{
 			Source: filepath.Join(path, file),
 			Target: filepath.Join(state.OutputDir, file),
 			IsDir:  false,
 		})
 	}
 
-	*templates = append(*templates, list)
+	*templates = append(*templates, template)
 
 	if group != "" {
 		for _, g := range meta.Groups {
@@ -286,7 +283,7 @@ func (self Templates) Execute(state *state) (err error) {
 				tmpl *template.Template
 				file *os.File
 			)
-			if buf, err = fs.ReadFile(state.Repository, item.Source); err != nil {
+			if buf, err = state.Repository.ReadFile(item.Source); err != nil {
 				return fmt.Errorf("read template file '%s': %w", item.Source, err)
 			}
 			if tmpl, err = template.New(filepath.Base(item.Source)).Parse(string(buf)); err != nil {
@@ -316,7 +313,7 @@ func (self Templates) Print() {
 	for _, exec := range self {
 		fmt.Fprintf(wr, "[Template]\t[Source]\t[Target]\n")
 		for _, def := range exec.List {
-			fmt.Fprintf(wr, "%s\t%s\t%s\n", exec.Name, def.Source, def.Target)
+			fmt.Fprintf(wr, "%s\t%s\t%s\n", exec.Metafile.Path, def.Source, def.Target)
 		}
 	}
 	fmt.Fprintf(wr, "\n")

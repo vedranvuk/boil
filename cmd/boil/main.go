@@ -117,7 +117,7 @@ func main() {
 				Options: cmdline.Options{
 					&cmdline.Variadic{
 						Name: "prefix",
-						Help: "Path prefix at which to start listing.",
+						Help: "Start listing from this prefix.",
 					},
 				},
 				Handler: func(c cmdline.Context) error {
@@ -143,8 +143,8 @@ func main() {
 				},
 				Handler: func(c cmdline.Context) error {
 					return newt.Run(&newt.Config{
-						TemplatePath:  c.RawValues("template-path").First(),
 						Overwrite:     c.IsParsed("overwrite"),
+						TemplatePath:  c.RawValues("template-path").First(),
 						Configuration: programConfig,
 					})
 				},
@@ -359,9 +359,10 @@ func main() {
 					// Execute Exec Command.
 					return exec.Run(&exec.Config{
 						TemplatePath:  c.RawValues("template-path").First(),
-						OutputDir:     c.RawValues("target-dir").First(),
-						NoExecute:     c.IsParsed("no-execute"),
+						OutputDir:     c.RawValues("output-dir").First(),
 						Overwrite:     c.IsParsed("overwrite"),
+						NoExecute:     c.IsParsed("no-execute"),
+						NoPrompts:     c.IsParsed("no-prompts"),
 						Vars:          vars,
 						Configuration: programConfig,
 					})

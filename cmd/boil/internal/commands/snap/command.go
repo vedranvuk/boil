@@ -6,9 +6,7 @@
 package snap
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -59,9 +57,6 @@ func (self *state) Run(config *Config) (err error) {
 	if self.config = config; self.config == nil {
 		return fmt.Errorf("nil config")
 	}
-	if err = boil.IsValidTemplatePath(config.TemplatePath); err != nil {
-		return err
-	}
 
 	// Open repository and get its metamap, check template exists.
 	if self.repo, err = boil.OpenRepository(config.Configuration); err != nil {
@@ -75,9 +70,7 @@ func (self *state) Run(config *Config) (err error) {
 	}
 
 	// Create new metadata, set base author info and file and dir list.
-	if self.metafile, err = self.repo.NewTemplate(config.TemplatePath); err != nil {
-		return fmt.Errorf("create new template: %w", err)
-	}
+	self.metafile = boil.NewMetafile(config.Configuration)
 	if self.source, err = filepath.Abs(config.SourcePath); err != nil {
 		return fmt.Errorf("get absolute source path: %w", err)
 	}
@@ -120,13 +113,13 @@ func (self *state) Run(config *Config) (err error) {
 
 	// Check existing template files
 	if !config.Overwrite {
+		var exists bool
 		for _, file := range self.metafile.Files {
-			if _, err = self.repo.Stat(file); err == nil {
+			if exists, err = self.repo.Exists(file); err != nil {
+				return err
+			}
+			if exists {
 				return fmt.Errorf("template file '%s' already exists", file)
-			} else {
-				if !errors.Is(err, fs.ErrNotExist) {
-					return fmt.Errorf("stat template file '%s': %w", file, err)
-				}
 			}
 		}
 	}
@@ -142,7 +135,7 @@ func (self *state) Run(config *Config) (err error) {
 		self.metafile.Print()
 	}
 
-	if err = self.repo.SaveTemplate(self.metafile); err != nil {
+	if err = self.repo.SaveMeta(self.metafile); err != nil {
 		return
 	}
 
@@ -154,7 +147,7 @@ func (self *state) Run(config *Config) (err error) {
 			fmt.Printf("Create template directory: '%s'\n", dir)
 		}
 
-		if err = self.repo.NewDirectory(dir); err != nil {
+		if err = self.repo.Mkdir(dir); err != nil {
 			return fmt.Errorf("create template dir: %w", err)
 		}
 	}
@@ -163,27 +156,20 @@ func (self *state) Run(config *Config) (err error) {
 	for _, file := range self.metafile.Files {
 
 		var (
-			in, out boil.File
-			inFn    = filepath.Join(self.source, file)
-			outFn   = filepath.Join(self.config.TemplatePath, file)
+			data  []byte
+			inFn  = filepath.Join(self.source, file)
+			outFn = filepath.Join(self.config.TemplatePath, file)
 		)
 
 		if config.Configuration.Overrides.Verbose {
 			fmt.Printf("Copy %s to %s\n", inFn, outFn)
 		}
 
-		if out, err = self.repo.OpenOrCreate(outFn); err != nil {
-			return fmt.Errorf("create template file: %w", err)
+		if data, err = os.ReadFile(inFn); err != nil {
+			return fmt.Errorf("read input file %w", err)
 		}
-		defer out.Close()
-
-		if in, err = os.OpenFile(inFn, os.O_RDONLY, os.ModePerm); err != nil {
-			return fmt.Errorf("open source file '%s': %w", file, err)
-		}
-		defer in.Close()
-
-		if _, err = io.Copy(out, in); err != nil {
-			return fmt.Errorf("copy template file '%s': %w", file, err)
+		if err = self.repo.WriteFile(outFn, data); err != nil {
+			return fmt.Errorf("write template file: %w", err)
 		}
 	}
 
