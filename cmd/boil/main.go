@@ -39,8 +39,9 @@ func main() {
 	}
 	// Command line configuration.
 	cmdlineConfig = &cmdline.Config{
-		Arguments:    os.Args[1:],
-		NoAssignment: true,
+		Arguments:      os.Args[1:],
+		NoAssignment:   true,
+		NoIndexedFirst: true,
 		Globals: cmdline.Options{
 			&cmdline.Boolean{
 				LongName:  "help",

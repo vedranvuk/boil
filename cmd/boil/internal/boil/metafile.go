@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"strings"
 	"text/tabwriter"
 )
 
@@ -296,22 +295,8 @@ func (self Prompts) FindByVariable(variable string) *Prompt {
 	return nil
 }
 
-// Metamap maps a template path including optional group name to its Metadata.
-// Path is relative to Repository.
+// Metamap maps a path to a template to its *Metafile.
 type Metamap map[string]*Metafile
-
-// Metafile returns the *Metafile for a path if it exists in self or
-// os.ErrNotExists if not. Returns an error if path is invalid.
-func (self Metamap) Metafile(path string) (*Metafile, error) {
-	if strings.HasPrefix(path, string(os.PathSeparator)) {
-		return nil, fmt.Errorf("metadata: invalid path: '%s'", path)
-	}
-	var meta, exists = self[path]
-	if !exists {
-		return nil, os.ErrNotExist
-	}
-	return meta, nil
-}
 
 // Print prints self to stdout.
 func (self Metamap) Print() {

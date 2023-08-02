@@ -62,8 +62,8 @@ func produceTemplates(state *state, path string, templates *Templates) (err erro
 
 	path, group, _ = strings.Cut(path, "#")
 
-	if meta, exists = state.Metamap[path]; !exists {
-		return fmt.Errorf("template not found: '%s'", path)
+	if meta, err = state.Repository.OpenMeta(path); err != nil {
+		return err
 	}
 
 	var template = &Template{

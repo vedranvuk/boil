@@ -41,7 +41,7 @@ func (self DiskRepository) LoadMetamap() (metamap Metamap, err error) {
 			return fmt.Errorf("walk error: %w", err)
 		}
 
-		if metadata, err = readMeta(path); err != nil {
+		if metadata, err = readMeta(filepath.Join(path, MetafileName)); err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
 				return err
 			}
@@ -76,33 +76,39 @@ func (self DiskRepository) LoadMetamap() (metamap Metamap, err error) {
 }
 
 func (self *DiskRepository) HasMeta(path string) (exists bool, err error) {
-	return self.Exists(filepath.Join(self.root, MetafileName))
+	return self.Exists(filepath.Join(path, MetafileName))
 }
 
 func (self *DiskRepository) OpenMeta(path string) (meta *Metafile, err error) {
-	return readMeta(filepath.Join(self.root, MetafileName))
+	return readMeta(filepath.Join(self.root, path, MetafileName))
 }
 
 func (self *DiskRepository) SaveMeta(meta *Metafile) (err error) {
-	var file *os.File
-	if file, err = os.OpenFile(filepath.Join(self.root, meta.Path), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm); err != nil {
-		return fmt.Errorf("open file for save meta: %w", err)
+	if err = self.Mkdir(meta.Path); err != nil {
+		return
 	}
+
+	var file *os.File
+	if file, err = os.OpenFile(
+		filepath.Join(self.root, meta.Path, MetafileName),
+		os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.ModePerm,
+	); err != nil {
+		return fmt.Errorf("open metafile: %w", err)
+	}
+
 	var data []byte
 	if data, err = json.MarshalIndent(meta, "", "\t"); err != nil {
 		return fmt.Errorf("marshal metafile: %w", err)
 	}
-	if err = self.Mkdir(meta.Path); err != nil {
-		return
-	}
 	if _, err = file.Write(data); err != nil {
 		return fmt.Errorf("write metafile: %w", err)
 	}
+
 	return nil
 }
 
 func (self *DiskRepository) Exists(path string) (exists bool, err error) {
-	if _, err = os.Stat(filepath.Join(self.root, MetafileName)); err == nil {
+	if _, err = os.Stat(filepath.Join(self.root, path)); err == nil {
 		return true, nil
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return false, fmt.Errorf("hasmeta: %w", err)

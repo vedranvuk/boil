@@ -77,8 +77,6 @@ type state struct {
 	OutputDir string
 	// Repository is the loaded Repository.
 	Repository boil.Repository
-	// Metamap is the metamap of the loaded repository.
-	Metamap boil.Metamap
 	// Data for Template files, combined from various inputs.
 	Data *Data
 	// MakeBackup dictates if backups should be made on execution.
@@ -116,10 +114,6 @@ func Run(config *Config) (err error) {
 
 	if state.Repository, err = boil.OpenRepository(config.Configuration); err != nil {
 		return fmt.Errorf("open repository: %w", err)
-	}
-
-	if state.Metamap, err = state.Repository.LoadMetamap(); err != nil {
-		return fmt.Errorf("load metamap: %w", err)
 	}
 
 	if state.OutputDir, err = filepath.Abs(config.OutputDir); err != nil {
@@ -165,7 +159,6 @@ func Run(config *Config) (err error) {
 
 	if config.ShouldPrint() {
 		fmt.Printf("Repository location: %s\n", state.Repository.Location())
-		state.Metamap.Print()
 		state.Templates.Print()
 	}
 

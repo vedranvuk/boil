@@ -42,7 +42,6 @@ func newState() *state {
 // state is the execution state of the edit command.
 type state struct {
 	repo     boil.Repository
-	metamap  boil.Metamap
 	metafile *boil.Metafile
 	vars     boil.Variables
 }
@@ -54,10 +53,7 @@ func (self *state) Run(config *Config) (err error) {
 	if self.repo, err = boil.OpenRepository(config.Config); err != nil {
 		return fmt.Errorf("open repository: %w", err)
 	}
-	if self.metamap, err = self.repo.LoadMetamap(); err != nil {
-		return fmt.Errorf("load metamap: %w", err)
-	}
-	if self.metafile, err = self.metamap.Metafile(config.TemplatePath); err != nil {
+	if self.metafile, err = self.repo.OpenMeta(config.TemplatePath); err != nil {
 		return fmt.Errorf("template %s not found", config.TemplatePath)
 	}
 

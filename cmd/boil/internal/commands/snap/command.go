@@ -44,7 +44,6 @@ func newState() *state { return &state{} }
 type state struct {
 	config   *Config
 	repo     boil.Repository
-	metamap  boil.Metamap
 	metafile *boil.Metafile
 	source   string
 }
@@ -62,10 +61,7 @@ func (self *state) Run(config *Config) (err error) {
 	if self.repo, err = boil.OpenRepository(config.Configuration); err != nil {
 		return fmt.Errorf("open repository: %w", err)
 	}
-	if self.metamap, err = self.repo.LoadMetamap(); err != nil {
-		return fmt.Errorf("load metamap: %w", err)
-	}
-	if _, err = self.metamap.Metafile(config.TemplatePath); err == nil && !config.Overwrite {
+	if _, err = self.repo.OpenMeta(config.TemplatePath); err == nil && !config.Overwrite {
 		return fmt.Errorf("template %s already exists", config.TemplatePath)
 	}
 
@@ -74,6 +70,7 @@ func (self *state) Run(config *Config) (err error) {
 	if self.source, err = filepath.Abs(config.SourcePath); err != nil {
 		return fmt.Errorf("get absolute source path: %w", err)
 	}
+	self.metafile.Path = config.TemplatePath
 	var fi fs.FileInfo
 	if fi, err = os.Stat(self.source); err != nil {
 		return fmt.Errorf("stat source: %w", err)
@@ -82,10 +79,10 @@ func (self *state) Run(config *Config) (err error) {
 			if err != nil {
 				return err
 			}
-			if path = strings.TrimPrefix(strings.TrimPrefix(path, self.source), "/"); path == "" {
-				return nil
+			if path, err = filepath.Rel(self.source, path); err != nil {
+				return err
 			}
-			if strings.ToLower(path) == boil.MetafileName {
+			if path == "." || path == strings.ToLower(boil.MetafileName) {
 				return nil
 			}
 			if d.IsDir() {

@@ -28,7 +28,7 @@ type Repository interface {
 	// Repository backend.
 	Location() string
 
-	// LoadMetamap loads metadata from root directory recursively recursively
+	// LoadMetamap loads metadata from root 
 	// walking all child subdirectories and returns it or returns a descriptive
 	// error if one occurs.
 	//
