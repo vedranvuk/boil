@@ -25,7 +25,7 @@
 			]
 		},
 		{
-			"name": "boil exec",
+			"name": "boil exec cliapp repo",
 			"type": "go",
 			"request": "launch",
 			"mode": "auto",
@@ -35,14 +35,33 @@
 				"-r",
 				"${workspaceFolder}/_testdata/testrepo",
 				"exec",
-				"-w",
 				"apps/cliapp#all",
 				"-o",
-				"${workspaceFolder}/_testdata/output/cliapp",
+				"${workspaceFolder}/_testdata/output/cliapprepo",
 				"-r",
 				"ProjectName=cliapp",
 				"-r",
-				"ModulePath=github.com/vedranvuk/cliapp"
+				"ModulePath=github.com/vedranvuk/cliapp",
+				"-w"
+			]
+		},
+		{
+			"name": "boil exec cliapp absolute",
+			"type": "go",
+			"request": "launch",
+			"mode": "auto",
+			"program": "${workspaceFolder}/cmd/boil",
+			"args": [
+				"-v",
+				"exec",
+				"${workspaceFolder}/_testdata/testrepo/apps/cliapp#all",
+				"-o",
+				"${workspaceFolder}/_testdata/output/cliappabs",
+				"-r",
+				"ProjectName=cliapp",
+				"-r",
+				"ModulePath=github.com/vedranvuk/cliapp",
+				"-w"
 			]
 		},
 		{

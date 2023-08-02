@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
 )
@@ -49,6 +50,9 @@ type Config struct {
 	// return an error if a variable declared in a prompt was not parsed from
 	// the command line.
 	NoPrompts bool
+
+	// EditAfterExec if true opens the output with the editor.
+	EditAfterExec bool
 
 	// Vars are variables given by the user on command line.
 	// These variables will be available via .Vars template field.
@@ -105,14 +109,19 @@ func Run(config *Config) (err error) {
 		// If TemplatePath is an absolute path open the Template as the
 		// Repository and adjust the template path to "current directory"
 		// pointing to repository root.
-		state.RepositoryPath = config.TemplatePath
-		state.TemplatePath = "."
+		if path, group, found := strings.Cut(config.TemplatePath, "#"); found {
+			state.TemplatePath = ".#" + group
+			state.RepositoryPath = path
+		} else {
+			state.TemplatePath = "."
+			state.RepositoryPath = path
+		}
 		if config.ShouldPrint() {
 			fmt.Println("Absolute Template path specified, repository opened at template root.")
 		}
 	}
 
-	if state.Repository, err = boil.OpenRepository(config.Configuration); err != nil {
+	if state.Repository, err = boil.OpenRepository(state.RepositoryPath); err != nil {
 		return fmt.Errorf("open repository: %w", err)
 	}
 
@@ -176,6 +185,12 @@ func Run(config *Config) (err error) {
 	}
 	if err = state.Templates.ExecPostExecuteActions(state.Data.Vars); err != nil {
 		return fmt.Errorf("post execute action failed: %w", err)
+	}
+
+	if config.EditAfterExec {
+		if err = config.Configuration.ExternalEditor.Execute(state.Data.Vars); err != nil {
+			return
+		}
 	}
 
 	return nil

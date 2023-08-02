@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
 )
@@ -20,6 +21,8 @@ type Config struct {
 	TemplatePath string
 	// EditAction specifies the edit sub action.
 	EditAction string
+	// EditPath is the path to edit by one of fs edit actions.
+	EditPath string
 	// ForceRemoveNonEmptyDir removal of non-empty directories.
 	ForceRemoveNonEmptyDir bool
 	// Open the file with editor after touching it.
@@ -30,68 +33,67 @@ type Config struct {
 
 // Run executes the Edit command configured by config.
 // If an error occurs it is returned and the operation may be considered failed.
-func Run(config *Config) (err error) { return newState().Run(config) }
+func Run(config *Config) (err error) {
 
-// newState returns a new state.
-func newState() *state {
-	return &state{
-		vars: make(boil.Variables),
+	var (
+		repo           boil.Repository
+		meta           *boil.Metafile
+		vars           boil.Variables
+		tmplPath, _, _ = strings.Cut(config.TemplatePath, "#")
+		repoPath       = config.Config.GetRepositoryPath()
+	)
+
+	if filepath.IsAbs(config.TemplatePath) {
+		// If TemplatePath is an absolute path open the Template as the
+		// Repository and adjust the template path to "current directory"
+		// pointing to repository root.
+		repoPath = tmplPath
+		tmplPath = "."
+		if config.Config.Overrides.Verbose {
+			fmt.Println("Absolute Template path specified, repository opened at template root.")
+		}
 	}
-}
 
-// state is the execution state of the edit command.
-type state struct {
-	repo     boil.Repository
-	metafile *boil.Metafile
-	vars     boil.Variables
-}
-
-// Run executes the Edit command configured by config.
-// If an error occurs it is returned and the operation may be considered failed.
-func (self *state) Run(config *Config) (err error) {
-
-	if self.repo, err = boil.OpenRepository(config.Config); err != nil {
+	if repo, err = boil.OpenRepository(repoPath); err != nil {
 		return fmt.Errorf("open repository: %w", err)
 	}
-	if self.metafile, err = self.repo.OpenMeta(config.TemplatePath); err != nil {
+	if meta, err = repo.OpenMeta(tmplPath); err != nil {
 		return fmt.Errorf("template %s not found", config.TemplatePath)
 	}
 
-	self.vars["TemplatePath"] = filepath.Join(self.repo.Location(), config.TemplatePath)
+	vars["TemplatePath"] = filepath.Join(repo.Location(), config.TemplatePath)
 
 	switch config.EditAction {
 	case "edit":
-		return config.Config.ExternalEditor.Execute(self.vars)
+		return config.Config.ExternalEditor.Execute(vars)
 	case "all":
-		err = boil.NewEditor(config.Config, self.metafile).EditAll()
+		err = boil.NewEditor(config.Config, meta).EditAll()
 	case "info":
-		err = boil.NewEditor(config.Config, self.metafile).EditInfo()
+		err = boil.NewEditor(config.Config, meta).EditInfo()
 	case "files":
-		err = boil.NewEditor(config.Config, self.metafile).EditFiles()
+		err = boil.NewEditor(config.Config, meta).EditFiles()
 	case "dirs":
-		err = boil.NewEditor(config.Config, self.metafile).EditDirs()
+		err = boil.NewEditor(config.Config, meta).EditDirs()
 	case "prompts":
-		err = boil.NewEditor(config.Config, self.metafile).EditPrompts()
+		err = boil.NewEditor(config.Config, meta).EditPrompts()
 	case "preparse":
-		err = boil.NewEditor(config.Config, self.metafile).EditPreParse()
+		err = boil.NewEditor(config.Config, meta).EditPreParse()
 	case "preexec":
-		err = boil.NewEditor(config.Config, self.metafile).EditPreExec()
+		err = boil.NewEditor(config.Config, meta).EditPreExec()
 	case "postexec":
-		err = boil.NewEditor(config.Config, self.metafile).EditPostExec()
+		err = boil.NewEditor(config.Config, meta).EditPostExec()
 	case "groups":
-		err = boil.NewEditor(config.Config, self.metafile).EditGroups()
+		err = boil.NewEditor(config.Config, meta).EditGroups()
 	case "file":
-		err = self.openFile(config.TemplatePath)
+		err = openFile(config.EditPath)
 	case "touch":
-		err = self.touchFile(config.TemplatePath)
-	case "delete":
-		err = self.deleteFile(config.TemplatePath)
+		err = touchFile(config.EditPath)
 	case "directory":
-		err = self.openDirectory(config.TemplatePath)
+		err = openDirectory(config.EditPath)
 	case "add":
-		err = self.addDirectory(config.TemplatePath)
+		err = addDirectory(config.EditPath)
 	case "remove":
-		err = self.removeDirectory(config.TemplatePath, config.ForceRemoveNonEmptyDir)
+		err = remove(config.EditPath, config.ForceRemoveNonEmptyDir)
 	default:
 		panic("unknown edit action")
 	}
@@ -99,47 +101,48 @@ func (self *state) Run(config *Config) (err error) {
 		return
 	}
 	if config.Config.Overrides.Verbose {
-		self.metafile.Print()
+		meta.Print()
 	}
-	return self.repo.SaveMeta(self.metafile)
+	return repo.SaveMeta(meta)
+
 }
 
 var errNotImplemented = errors.New("not implemented")
 
 // openFile opens a file at the path relative to the template directory with
 // the editor and returns nil or an error if one occurs.
-func (self *state) openFile(path string) (err error) {
+func openFile(path string) (err error) {
 	return errNotImplemented
 }
 
 // touchFile creates a new template file at the path relative to the template
 // directory and returns nil or an error if one occured.
-func (self *state) touchFile(path string) (err error) {
+func touchFile(path string) (err error) {
 	return errNotImplemented
 }
 
 // deleteFile deletes a template file at the path relative to the template
 // directory and returns nil or an error if one occured.
-func (self *state) deleteFile(path string) (err error) {
+func deleteFile(path string) (err error) {
 	return errNotImplemented
 }
 
 // openDirectory opens a directory at the path relative to the template
 // directory with the editor and returns nil or an error if one occurs.
-func (self *state) openDirectory(path string) (err error) {
+func openDirectory(path string) (err error) {
 	return errNotImplemented
 }
 
 // addDirectory creates a new directory at the path relative to the template
 // directory and returns nil or an error if one occured. If the directory
 // already exists the function is a no-op.
-func (self *state) addDirectory(path string) (err error) {
+func addDirectory(path string) (err error) {
 	return errNotImplemented
 }
 
 // removeDirectory deletes a directory at the path relative to the template
 // directory and returns nil or an error if one occured. If force is true
-// removes self even if not empty otherwise generates an error.
-func (self *state) removeDirectory(path string, force bool) (err error) {
+// removes even if not empty otherwise generates an error.
+func remove(path string, force bool) (err error) {
 	return
 }

@@ -34,8 +34,8 @@ func newState() *state {
 type state struct {
 	config   *Config
 	repo     boil.Repository
-	metafile *boil.Metafile
 	vars     boil.Variables
+	metafile *boil.Metafile
 }
 
 // Run executes the New command configured by config.
@@ -44,13 +44,14 @@ func (self *state) Run(config *Config) (err error) {
 	if self.config = config; self.config == nil {
 		return fmt.Errorf("nil config")
 	}
-	if self.repo, err = boil.OpenRepository(config.Configuration); err != nil {
+	if self.repo, err = boil.OpenRepository(config.Configuration.GetRepositoryPath()); err != nil {
 		return fmt.Errorf("open repository: %w", err)
 	}
 	if _, err = self.repo.OpenMeta(config.TemplatePath); err == nil && !config.Overwrite {
 		return fmt.Errorf("template %s already exists", config.TemplatePath)
 	}
 	self.metafile = boil.NewMetafile(config.Configuration)
+	self.metafile.Path = config.TemplatePath
 	if err = boil.NewEditor(self.config.Configuration, self.metafile).Wizard(); err != nil {
 		return fmt.Errorf("execute wizard: %w", err)
 	}

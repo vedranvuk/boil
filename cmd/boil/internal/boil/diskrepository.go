@@ -11,19 +11,13 @@ import (
 )
 
 // NewDiskRepository returns a new DiskRepository rooted at root.
-func NewDiskRepository(config *Config) *DiskRepository {
-	return &DiskRepository{
-		config.GetRepositoryPath(),
-		config,
-	}
-}
+func NewDiskRepository(root string) *DiskRepository { return &DiskRepository{root} }
 
 // DiskRepository is a repository that works with a local fileystem.
 // It is initialized from an absolute filesystem path or a path relative to the
 // current working directory.
 type DiskRepository struct {
-	root   string
-	config *Config
+	root string
 }
 
 func (self DiskRepository) Location() string { return self.root }

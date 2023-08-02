@@ -126,20 +126,19 @@ func (self Templates) PresentPrompts(variables boil.Variables, undeclaredOnly bo
 		exists bool
 	)
 
-	// Don't even show the prompt.
 	if self.ValidateVariablesFromPrompts(variables) == nil {
 		return nil
 	}
+	fmt.Printf("Input variable values.\n")
 
 	for _, template := range self {
-		fmt.Printf("Enter variables for template '%s'\n", template.Metafile.Path)
 		for _, prompt := range template.Metafile.Prompts {
 			if _, exists = variables[prompt.Variable]; exists && undeclaredOnly {
 				continue
 			}
 		Repeat:
 			if input, err = ui.AskValue(
-				fmt.Sprintf("%s (%s)", prompt.Variable, prompt.Description), "", prompt.RegExp,
+				fmt.Sprintf("%s %s (%s)", template.Metafile.Path, prompt.Variable, prompt.Description), "", prompt.RegExp,
 			); err != nil {
 				return err
 			}

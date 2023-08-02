@@ -58,7 +58,7 @@ func (self *state) Run(config *Config) (err error) {
 	}
 
 	// Open repository and get its metamap, check template exists.
-	if self.repo, err = boil.OpenRepository(config.Configuration); err != nil {
+	if self.repo, err = boil.OpenRepository(config.Configuration.GetRepositoryPath()); err != nil {
 		return fmt.Errorf("open repository: %w", err)
 	}
 	if _, err = self.repo.OpenMeta(config.TemplatePath); err == nil && !config.Overwrite {

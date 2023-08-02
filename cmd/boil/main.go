@@ -250,8 +250,8 @@ func main() {
 								},
 							},
 							{
-								Name:    "delete",
-								Help:    "Delete a file at specified path.",
+								Name:    "remove",
+								Help:    "Remove a file at specified path.",
 								Handler: handleEditSubCommand,
 							},
 						},
@@ -336,6 +336,11 @@ func main() {
 						ShortName: "n",
 						Help:      "Don't present input prompts for missing variables.",
 					},
+					&cmdline.Boolean{
+						LongName:  "edit",
+						ShortName: "e",
+						Help:      "Open output with editor after execution.",
+					},
 					&cmdline.Optional{
 						LongName:  "output-dir",
 						ShortName: "o",
@@ -364,6 +369,8 @@ func main() {
 						Overwrite:     c.IsParsed("overwrite"),
 						NoExecute:     c.IsParsed("no-execute"),
 						NoPrompts:     c.IsParsed("no-prompts"),
+						EditAfterExec: c.IsParsed("edit"),
+
 						Vars:          vars,
 						Configuration: programConfig,
 					})
@@ -387,11 +394,18 @@ func main() {
 
 // handleEditSubCommand handles the edit command and all of its subcommands.
 func handleEditSubCommand(c cmdline.Context) error {
-	return edit.Run(&edit.Config{
+	var config = &edit.Config{
 		TemplatePath:           c.GetParentCommand().Options.RawValues("template-path").First(),
 		EditAction:             c.GetCommand().Name,
 		ForceRemoveNonEmptyDir: c.IsParsed("force") && c.GetCommand().Name == "remove",
 		EditAfterTouch:         c.IsParsed("edit") && c.GetCommand().Name == "touch",
 		Config:                 programConfig,
-	})
+	}
+	if c.GetCommand().Name == "file" {
+		config.EditPath = c.RawValues("file-path").First()
+	}
+	if c.GetCommand().Name == "directory" {
+		config.EditPath = c.RawValues("directory-path").First()
+	}
+	return edit.Run(config)
 }

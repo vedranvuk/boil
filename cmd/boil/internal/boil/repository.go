@@ -7,17 +7,10 @@ package boil
 import (
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 )
-
-// File is a file in a repository.
-type File interface {
-	fs.File
-	Write(p []byte) (n int, err error)
-}
 
 // Repository defines a location where Templates are stored.
 //
@@ -28,7 +21,7 @@ type Repository interface {
 	// Repository backend.
 	Location() string
 
-	// LoadMetamap loads metadata from root 
+	// LoadMetamap loads metadata from root
 	// walking all child subdirectories and returns it or returns a descriptive
 	// error if one occurs.
 	//
@@ -47,7 +40,7 @@ type Repository interface {
 	// SaveMeta saves the Metafile into repository or returns an error.
 	// It overwrites the target if it exists or creates it if it does not.
 	SaveMeta(meta *Metafile) error
-	
+
 	// Exists returns true if file or dir exists at path or an error.
 	Exists(path string) (bool, error)
 	// GetFile gets contents of the file at path. It must exist and be
@@ -73,9 +66,8 @@ type Repository interface {
 // * local filesystem (DiskRepository)
 //
 // If an error occurs it is returned with a nil repository.
-func OpenRepository(config *Config) (repo Repository, err error) {
+func OpenRepository(path string) (repo Repository, err error) {
 
-	var path = config.GetRepositoryPath()
 	// TODO: Detect repository path and return an appropriate implementaiton.
 
 	// TODO: Implement network loading.
@@ -98,5 +90,5 @@ func OpenRepository(config *Config) (repo Repository, err error) {
 		return nil, fmt.Errorf("get absolute repository path: %w", err)
 	}
 
-	return NewDiskRepository(config), nil
+	return NewDiskRepository(path), nil
 }
