@@ -111,6 +111,21 @@ func produceTemplates(state *state, path string, templates *Templates) (err erro
 	return nil
 }
 
+// ExpandExecutionTargets expands all Execution.Target values of all Templates
+// in self using data and returns nil. If an error occurs it is returned and
+// self may be considered invalid in undetermined state.
+func (self Templates) DetermineTemplateTargets(state *state) (err error) {
+	for _, template := range self {
+		for _, execution := range template.List {
+			execution.Target = filepath.Join(
+				state.OutputDir,
+				state.Data.ReplaceAll(execution.Path),
+			)
+		}
+	}
+	return
+}
+
 // PresentPrompts presents a prompt to the user on command line for each of
 // the prompts defined in all Templates in self, in order as they appear in
 // self, depth first. If undeclaredOnly is true only prompts for entries not
@@ -149,21 +164,6 @@ func (self Templates) PresentPrompts(variables boil.Variables, undeclaredOnly bo
 	}
 
 	return nil
-}
-
-// ExpandExecutionTargets expands all Execution.Target values of all Templates
-// in self using data and returns nil. If an error occurs it is returned and
-// self may be considered invalid in undetermined state.
-func (self Templates) DetermineTemplateTargets(state *state) (err error) {
-	for _, template := range self {
-		for _, execution := range template.List {
-			execution.Target = filepath.Join(
-				state.OutputDir,
-				state.Data.ReplaceAll(execution.Path),
-			)
-		}
-	}
-	return
 }
 
 // CheckForTargetConflicts returns nil if none of the Target paths of all
@@ -248,7 +248,6 @@ func (self Templates) Execute(state *state) (err error) {
 	}
 
 	for _, exec := range self {
-
 		// Create dirs.
 		for _, item := range exec.List {
 			if !item.IsDir {

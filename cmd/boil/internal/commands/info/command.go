@@ -11,41 +11,31 @@ import (
 	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
 )
 
+// Config is the Info command configuration.
 type Config struct {
 	TemplatePath string
-	// Configuration is the loaded program configuration.
-	Configuration *boil.Config
+	// Config is the loaded program configuration.
+	Config *boil.Config
 }
 
-// Run executes the SNapshot command configured by config.
+// Run executes the Info command configured by config.
 // If an error occurs it is returned and the operation may be considered failed.
-func Run(config *Config) (err error) { return newState().Run(config) }
+func Run(config *Config) (err error) {
 
-func newState() *state { return &state{} }
+	var (
+		repo boil.Repository
+		meta *boil.Metafile
+	)
 
-type state struct {
-	config   *Config
-	repo     boil.Repository
-	metafile *boil.Metafile
-}
-
-// Run executes the Snap command configured by config.
-// If an error occurs it is returned and the operation may be considered failed.
-func (self *state) Run(config *Config) (err error) {
-
-	// Checks
-	if self.config = config; self.config == nil {
-		return fmt.Errorf("nil config")
-	}
 	// Open repository and get its metamap, check template exists.
-	if self.repo, err = boil.OpenRepository(config.Configuration.GetRepositoryPath()); err != nil {
+	if repo, err = boil.OpenRepository(config.Config.GetRepositoryPath()); err != nil {
 		return fmt.Errorf("open repository: %w", err)
 	}
-	if self.metafile, err = self.repo.OpenMeta(config.TemplatePath); err != nil {
+	if meta, err = repo.OpenMeta(config.TemplatePath); err != nil {
 		return fmt.Errorf("template %s not found", config.TemplatePath)
 	}
 
-	self.metafile.Print()
+	meta.Print()
 
 	return nil
 }

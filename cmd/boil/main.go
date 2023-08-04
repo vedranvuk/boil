@@ -123,8 +123,8 @@ func main() {
 				},
 				Handler: func(c cmdline.Context) error {
 					return list.Run(&list.Config{
-						Prefix:        c.RawValues("prefix").First(),
-						Configuration: programConfig,
+						Prefix: c.RawValues("prefix").First(),
+						Config: programConfig,
 					})
 				},
 			},
@@ -137,6 +137,11 @@ func main() {
 						ShortName: "w",
 						Help:      "Force overwrite if template exists",
 					},
+					&cmdline.Boolean{
+						LongName:  "edit",
+						ShortName: "e",
+						Help:      "Open template directory with the editor when defined.",
+					},
 					&cmdline.Indexed{
 						Name: "template-path",
 						Help: "Name of the template to create.",
@@ -144,9 +149,10 @@ func main() {
 				},
 				Handler: func(c cmdline.Context) error {
 					return newt.Run(&newt.Config{
-						Overwrite:     c.IsParsed("overwrite"),
-						TemplatePath:  c.RawValues("template-path").First(),
-						Configuration: programConfig,
+						Overwrite:       c.IsParsed("overwrite"),
+						TemplatePath:    c.RawValues("template-path").First(),
+						EditAfterDefine: c.IsParsed("edit"),
+						Config:          programConfig,
 					})
 				},
 			},
@@ -175,11 +181,11 @@ func main() {
 				},
 				Handler: func(c cmdline.Context) error {
 					return snap.Run(&snap.Config{
-						TemplatePath:  c.RawValues("template-path").First(),
-						Wizard:        c.IsParsed("wizard"),
-						Overwrite:     c.IsParsed("overwrite"),
-						SourcePath:    c.RawValues("source-path").First(),
-						Configuration: programConfig,
+						TemplatePath: c.RawValues("template-path").First(),
+						Wizard:       c.IsParsed("wizard"),
+						Overwrite:    c.IsParsed("overwrite"),
+						SourcePath:   c.RawValues("source-path").First(),
+						Config:       programConfig,
 					})
 				},
 			},
@@ -194,14 +200,14 @@ func main() {
 				},
 				Handler: func(c cmdline.Context) error {
 					return info.Run(&info.Config{
-						TemplatePath:  c.RawValues("template-path").First(),
-						Configuration: programConfig,
+						TemplatePath: c.RawValues("template-path").First(),
+						Config:       programConfig,
 					})
 				},
 			},
 			{
 				Name: "edit",
-				Help: "Edit a template using the default editor.",
+				Help: "Edit template metadata.",
 				Options: cmdline.Options{
 					&cmdline.Indexed{
 						Name: "template-path",
@@ -218,7 +224,7 @@ func main() {
 				SubCommands: cmdline.Commands{
 					{
 						Name:    "all",
-						Help:    "Edit all metafile values.",
+						Help:    "Edit all metafile fields.",
 						Handler: handleEditSubCommand,
 					},
 					{
@@ -227,64 +233,66 @@ func main() {
 						Handler: handleEditSubCommand,
 					},
 					{
-						Name: "file",
-						Help: "Edit a template file. (Omit action to open file with editor)",
-						Options: cmdline.Options{
-							&cmdline.Indexed{
-								Name: "file-path",
-								Help: "Path of file to edit relative to template directory.",
+						Name: "files",
+						Help: "Add or remove file entries.",
+						SubCommands: cmdline.Commands{
+							{
+								Name: "add",
+								Help: "Add a new file entry.",
+								Options: cmdline.Options{
+									&cmdline.Optional{
+										LongName:  "name",
+										ShortName: "n",
+										Help:      "File name relative to template directory.",
+									},
+								},
+								Handler: handleEditSubCommand,
+							},
+							{
+								Name: "rem",
+								Help: "Remove a file entry.",
+								Options: cmdline.Options{
+									&cmdline.Optional{
+										LongName:  "name",
+										ShortName: "n",
+										Help:      "File name relative to template directory.",
+									},
+								},
+								Handler: handleEditSubCommand,
 							},
 						},
 						Handler: handleEditSubCommand,
-						SubCommands: cmdline.Commands{
-							{
-								Name:    "touch",
-								Help:    "Create a new file at specified path if it does not exist.",
-								Handler: handleEditSubCommand,
-								Options: cmdline.Options{
-									&cmdline.Boolean{
-										LongName:  "edit",
-										ShortName: "e",
-										Help:      "Open file with editor afterwards",
-									},
-								},
-							},
-							{
-								Name:    "remove",
-								Help:    "Remove a file at specified path.",
-								Handler: handleEditSubCommand,
-							},
-						},
 					},
 					{
-						Name: "directory",
-						Help: "Edit a directory. (Omit action to open directory with editor)",
-						Options: cmdline.Options{
-							&cmdline.Indexed{
-								Name: "directory-path",
-								Help: "Path of the directory to edit relative to template directory.",
+						Name: "directories",
+						Help: "Add or remove directory entries",
+						SubCommands: cmdline.Commands{
+							{
+								Name: "add",
+								Help: "Add a new directory entry.",
+								Options: cmdline.Options{
+									&cmdline.Optional{
+										LongName:  "name",
+										ShortName: "n",
+										Help:      "Directory name relative to template directory.",
+									},
+								},
+								Handler: handleEditSubCommand,
+							},
+							{
+								Name: "rem",
+								Help: "Remove a directory entry.",
+								Options: cmdline.Options{
+									&cmdline.Optional{
+										LongName:  "name",
+										ShortName: "n",
+										Help:      "Directory name relative to template directory.",
+									},
+								},
+								Handler: handleEditSubCommand,
 							},
 						},
 						Handler: handleEditSubCommand,
-						SubCommands: cmdline.Commands{
-							{
-								Name:    "add",
-								Help:    "Add a new directory at specified path.",
-								Handler: handleEditSubCommand,
-							},
-							{
-								Name:    "remove",
-								Help:    "Remove a directory at specified path.",
-								Handler: handleEditSubCommand,
-								Options: cmdline.Options{
-									&cmdline.Boolean{
-										LongName:  "force",
-										ShortName: "f",
-										Help:      "Force removal of non-empty directories.",
-									},
-								},
-							},
-						},
 					},
 					{
 						Name:    "prompts",
@@ -371,8 +379,8 @@ func main() {
 						NoPrompts:     c.IsParsed("no-prompts"),
 						EditAfterExec: c.IsParsed("edit"),
 
-						Vars:          vars,
-						Configuration: programConfig,
+						Vars:   vars,
+						Config: programConfig,
 					})
 				},
 			},
@@ -394,18 +402,32 @@ func main() {
 
 // handleEditSubCommand handles the edit command and all of its subcommands.
 func handleEditSubCommand(c cmdline.Context) error {
+
 	var config = &edit.Config{
 		TemplatePath:           c.GetParentCommand().Options.RawValues("template-path").First(),
 		EditAction:             c.GetCommand().Name,
+		EditTarget:             c.RawValues("name").First(),
 		ForceRemoveNonEmptyDir: c.IsParsed("force") && c.GetCommand().Name == "remove",
 		EditAfterTouch:         c.IsParsed("edit") && c.GetCommand().Name == "touch",
 		Config:                 programConfig,
 	}
-	if c.GetCommand().Name == "file" {
-		config.EditPath = c.RawValues("file-path").First()
+
+	switch cmd := c.GetCommand(); cmd.Name {
+	case "add":
+		switch c.GetParentCommand().Name {
+		case "files":
+			config.EditAction = "addFile"
+		case "directories":
+			config.EditAction = "addDir"
+		}
+	case "rem":
+		switch c.GetParentCommand().Name {
+		case "files":
+			config.EditAction = "remFile"
+		case "directories":
+			config.EditAction = "remDir"
+		}
 	}
-	if c.GetCommand().Name == "directory" {
-		config.EditPath = c.RawValues("directory-path").First()
-	}
+
 	return edit.Run(config)
 }

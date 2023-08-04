@@ -7,57 +7,55 @@ package newt
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
 )
 
 // Config is the New command configuration.
 type Config struct {
-	TemplatePath  string
-	Overwrite     bool
-	Configuration *boil.Config
+	TemplatePath string
+	Overwrite    bool
+	// EditAfterDefine if true opens the newly defined template
+	// after its defined by wizard.
+	EditAfterDefine bool
+	Config          *boil.Config
 }
 
 // Run executes the New command configured by config.
 // If an error occurs it is returned and the operation may be considered failed.
-func Run(config *Config) error { return newState().Run(config) }
+func Run(config *Config) (err error) {
 
-// newState returns a new state.
-func newState() *state {
-	return &state{
-		vars: make(boil.Variables),
-	}
-}
+	var (
+		repo boil.Repository
+		vars boil.Variables
+		meta *boil.Metafile
+	)
 
-// state is the execution state of the new command.
-type state struct {
-	config   *Config
-	repo     boil.Repository
-	vars     boil.Variables
-	metafile *boil.Metafile
-}
-
-// Run executes the New command configured by config.
-// If an error occurs it is returned and the operation may be considered failed.
-func (self *state) Run(config *Config) (err error) {
-	if self.config = config; self.config == nil {
-		return fmt.Errorf("nil config")
-	}
-	if self.repo, err = boil.OpenRepository(config.Configuration.GetRepositoryPath()); err != nil {
+	if repo, err = boil.OpenRepository(config.Config.GetRepositoryPath()); err != nil {
 		return fmt.Errorf("open repository: %w", err)
 	}
-	if _, err = self.repo.OpenMeta(config.TemplatePath); err == nil && !config.Overwrite {
+	if _, err = repo.OpenMeta(config.TemplatePath); err == nil && !config.Overwrite {
 		return fmt.Errorf("template %s already exists", config.TemplatePath)
 	}
-	self.metafile = boil.NewMetafile(config.Configuration)
-	self.metafile.Path = config.TemplatePath
-	if err = boil.NewEditor(self.config.Configuration, self.metafile).Wizard(); err != nil {
+
+	meta = boil.NewMetafile(config.Config)
+	meta.Path = config.TemplatePath
+	if err = boil.NewEditor(config.Config, meta).Wizard(); err != nil {
 		return fmt.Errorf("execute wizard: %w", err)
 	}
-	if err = self.repo.SaveMeta(self.metafile); err != nil {
+	if err = repo.SaveMeta(meta); err != nil {
 		return
 	}
-	self.vars["TemplatePath"] = filepath.Join(self.repo.Location(), config.TemplatePath)
-	return self.config.Configuration.ExternalEditor.Execute(self.vars)
+
+	// TODO: Variables
+	vars.AddNew(boil.Variables{
+		"TemplatePath": config.TemplatePath,
+	})
+
+	if config.EditAfterDefine {
+		return config.Config.ExternalEditor.Execute(vars)
+	}
+
+	return nil
+
 }

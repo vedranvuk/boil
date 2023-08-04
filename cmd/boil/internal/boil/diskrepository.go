@@ -102,12 +102,13 @@ func (self *DiskRepository) SaveMeta(meta *Metafile) (err error) {
 }
 
 func (self *DiskRepository) Exists(path string) (exists bool, err error) {
-	if _, err = os.Stat(filepath.Join(self.root, path)); err == nil {
-		return true, nil
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return false, fmt.Errorf("hasmeta: %w", err)
+	if _, err = os.Stat(filepath.Join(self.root, path)); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+		return false, err
 	}
-	return false, nil
+	return true, nil
 }
 
 func (self *DiskRepository) ReadFile(name string) ([]byte, error) {
@@ -135,5 +136,6 @@ func readMeta(filename string) (meta *Metafile, err error) {
 	if err = json.Unmarshal(data, meta); err != nil {
 		return nil, fmt.Errorf("unmarshal metafile: %w", err)
 	}
+	meta.Path = filepath.Dir(filename)
 	return
 }

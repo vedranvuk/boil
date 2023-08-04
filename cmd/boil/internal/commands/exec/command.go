@@ -58,18 +58,18 @@ type Config struct {
 	// These variables will be available via .Vars template field.
 	Vars boil.Variables
 
-	// Configuration is the loaded program configuration.
-	Configuration *boil.Config
+	// Config is the loaded program configuration.
+	Config *boil.Config
 }
 
 // ShouldPrint returns true if Config.Verbose or Config.NoExecute is true.
 func (self *Config) ShouldPrint() bool {
-	return self.Configuration.Overrides.Verbose || self.NoExecute
+	return self.Config.Overrides.Verbose || self.NoExecute
 }
 
 // GetRepositoryPath returns the RepositoryPath considering override values.
 func (self *Config) GetRepositoryPath() string {
-	return self.Configuration.GetRepositoryPath()
+	return self.Config.GetRepositoryPath()
 }
 
 // state is the Exec command state.
@@ -101,7 +101,7 @@ func Run(config *Config) (err error) {
 		RepositoryPath: config.GetRepositoryPath(),
 		TemplatePath:   config.TemplatePath,
 		OutputDir:      config.OutputDir,
-		MakeBackups:    config.Configuration.ShouldBackup(),
+		MakeBackups:    config.Config.ShouldBackup(),
 		Data:           NewData(),
 	}
 
@@ -124,7 +124,7 @@ func Run(config *Config) (err error) {
 	if state.OutputDir, err = filepath.Abs(config.OutputDir); err != nil {
 		return fmt.Errorf("get absolute target path: %w", err)
 	}
-	
+
 	// Open repo, get a list of templates to execute, run pre-parse actions.
 	if state.Repository, err = boil.OpenRepository(state.RepositoryPath); err != nil {
 		return fmt.Errorf("open repository: %w", err)
@@ -151,8 +151,7 @@ func Run(config *Config) (err error) {
 	state.Data.Vars.MaybeSetString(boil.VarOutputDirectory, &state.OutputDir)
 	// Append system variables to state vars if not given
 	state.Data.Vars.AddNew(boil.Variables{
-		"TemplatePath":    state.TemplatePath,
-		"OutputDirectory": state.OutputDir,
+		boil.VarTemplatePath.String():      state.TemplatePath,
 	})
 
 	// Expand variable placeholders in paths.
@@ -183,7 +182,7 @@ func Run(config *Config) (err error) {
 		return fmt.Errorf("post execute action failed: %w", err)
 	}
 	if config.EditAfterExec {
-		if err = config.Configuration.ExternalEditor.Execute(state.Data.Vars); err != nil {
+		if err = config.Config.ExternalEditor.Execute(state.Data.Vars); err != nil {
 			return
 		}
 	}

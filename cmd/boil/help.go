@@ -35,6 +35,11 @@ var helpTopics = HelpTopics{
 		Print:       printRepository,
 	},
 	{
+		Topic:       "edit",
+		Description: "Edit command usage.",
+		Print:       printEdit,
+	},
+	{
 		Topic:       "exec",
 		Description: "Exec command usage.",
 		Print:       printExec,
@@ -195,28 +200,6 @@ func printOverview() {
 	fmt.Print(overviewText)
 }
 
-const execText = `
-Usage: boil exec <template-path> [options]
-
-The exec command executes a template to a target directory.
-
-replacing placeholder 
-variables in the process and executing a template using values provided on 
-command line or extracted from a go file.
-
-If a variable declared in a prompt is specified on command line the prompt for 
-it - if prompting is enabled - will not be presented to the user.
-
-Following variables may override exec command option values:
-
-OutputDirectory output-dir
-`
-
-func printExec() {
-	cmdline.PrintCommand(os.Stdout, cmdlineConfig, cmdlineConfig.Commands.Find("exec"), 0)
-	fmt.Print(execText)
-}
-
 const templatePathText = `
 A template path is a simple relative path that addresses a template directory
 inside a repository. This format is used by all except the exec command.
@@ -236,7 +219,7 @@ An absolute path to a template:
 
 An absolute path to a template that addresses a group defined in the template:
 
-  /hom/user/templates/apptemplate#all
+  /home/user/templates/apptemplate#all
 `
 
 func printTemplatePath() {
@@ -322,4 +305,45 @@ the 'segmented' Metafile but not any of the Templates defined in subdirectories.
 
 func printRepository() {
 	fmt.Print(repositoryText)
+}
+
+const editText = `
+Usage: boil edit <template-path> [options] [subcommand [options]]
+
+The edit commands edits a template files or template metadata.
+
+Executing the edit command without a subcommand opens the template directory in
+the editor defined in the configuration file. If one is not defined the template
+directory is opened in the system default file explorer.
+
+Edit subcommands open command prompt editors for metadata or parts of it.
+`
+
+func printEdit() {
+	cmdline.PrintCommand(os.Stdout, cmdlineConfig, cmdlineConfig.Commands.Find("edit"), 0)
+	fmt.Print(editText)
+}
+
+const execText = `
+Usage: boil exec <template-path> [options]
+
+The exec command executes a template by copying irs files and directories to the
+output directory. It replaces placeholder variables in source template file 
+names
+
+replacing placeholder 
+variables in the process and executing a template using values provided on 
+command line or extracted from a go file.
+
+If a variable declared in a prompt is specified on command line the prompt for 
+it - if prompting is enabled - will not be presented to the user.
+
+Following variables may override exec command option values:
+
+OutputDirectory output-dir
+`
+
+func printExec() {
+	cmdline.PrintCommand(os.Stdout, cmdlineConfig, cmdlineConfig.Commands.Find("exec"), 0)
+	fmt.Print(execText)
 }

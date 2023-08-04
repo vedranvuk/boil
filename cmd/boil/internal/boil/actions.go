@@ -55,6 +55,7 @@ func (self *Action) Execute(variables Variables) (err error) {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
+	fmt.Println(cmd.String())
 	if err = cmd.Run(); err != nil && !self.NoFail {
 		return fmt.Errorf("action execution failed: %w", err)
 	}

@@ -6,7 +6,6 @@
 package edit
 
 import (
-	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -21,8 +20,8 @@ type Config struct {
 	TemplatePath string
 	// EditAction specifies the edit sub action.
 	EditAction string
-	// EditPath is the path to edit by one of fs edit actions.
-	EditPath string
+	// EditTarget is the target file or dir for some edit actions.
+	EditTarget string
 	// ForceRemoveNonEmptyDir removal of non-empty directories.
 	ForceRemoveNonEmptyDir bool
 	// Open the file with editor after touching it.
@@ -31,69 +30,99 @@ type Config struct {
 	Config *boil.Config
 }
 
+type state struct {
+	config   *boil.Config
+	repo     boil.Repository
+	meta     *boil.Metafile
+	vars     boil.Variables
+	tmplPath string
+	repoPath string
+}
+
 // Run executes the Edit command configured by config.
 // If an error occurs it is returned and the operation may be considered failed.
 func Run(config *Config) (err error) {
 
-	var (
-		repo           boil.Repository
-		meta           *boil.Metafile
-		vars           boil.Variables
-		tmplPath, _, _ = strings.Cut(config.TemplatePath, "#")
-		repoPath       = config.Config.GetRepositoryPath()
-	)
+	fmt.Printf("%#v\n", config)
+
+	var state = &state{
+		config:   config.Config,
+		vars:     make(boil.Variables),
+		tmplPath: config.TemplatePath,
+		repoPath: config.Config.GetRepositoryPath(),
+	}
+
+	state.tmplPath, _, _ = strings.Cut(config.TemplatePath, "#")
 
 	if filepath.IsAbs(config.TemplatePath) {
 		// If TemplatePath is an absolute path open the Template as the
 		// Repository and adjust the template path to "current directory"
 		// pointing to repository root.
-		repoPath = tmplPath
-		tmplPath = "."
+		state.repoPath = state.tmplPath
+		state.tmplPath = "."
 		if config.Config.Overrides.Verbose {
 			fmt.Println("Absolute Template path specified, repository opened at template root.")
 		}
 	}
 
-	if repo, err = boil.OpenRepository(repoPath); err != nil {
+	if state.repo, err = boil.OpenRepository(state.repoPath); err != nil {
 		return fmt.Errorf("open repository: %w", err)
 	}
-	if meta, err = repo.OpenMeta(tmplPath); err != nil {
+	if state.meta, err = state.repo.OpenMeta(state.tmplPath); err != nil {
 		return fmt.Errorf("template %s not found", config.TemplatePath)
 	}
 
-	vars["TemplatePath"] = filepath.Join(repo.Location(), config.TemplatePath)
+	state.vars[boil.VarTemplatePath.String()] = filepath.Join(state.repo.Location(), config.TemplatePath)
 
+	var (
+		tgtExists, entryExists bool
+		absTarget string
+	)
 	switch config.EditAction {
 	case "edit":
-		return config.Config.ExternalEditor.Execute(vars)
+		state.vars[boil.VarEditTarget.String()] = filepath.Join(state.repo.Location(), config.TemplatePath)
+		return config.Config.ExternalEditor.Execute(state.vars)
 	case "all":
-		err = boil.NewEditor(config.Config, meta).EditAll()
+		err = boil.NewEditor(config.Config, state.meta).EditAll()
 	case "info":
-		err = boil.NewEditor(config.Config, meta).EditInfo()
+		err = boil.NewEditor(config.Config, state.meta).EditInfo()
 	case "files":
-		err = boil.NewEditor(config.Config, meta).EditFiles()
+		err = boil.NewEditor(config.Config, state.meta).EditFiles()
 	case "dirs":
-		err = boil.NewEditor(config.Config, meta).EditDirs()
+		err = boil.NewEditor(config.Config, state.meta).EditDirs()
 	case "prompts":
-		err = boil.NewEditor(config.Config, meta).EditPrompts()
+		err = boil.NewEditor(config.Config, state.meta).EditPrompts()
 	case "preparse":
-		err = boil.NewEditor(config.Config, meta).EditPreParse()
+		err = boil.NewEditor(config.Config, state.meta).EditPreParse()
 	case "preexec":
-		err = boil.NewEditor(config.Config, meta).EditPreExec()
+		err = boil.NewEditor(config.Config, state.meta).EditPreExec()
 	case "postexec":
-		err = boil.NewEditor(config.Config, meta).EditPostExec()
+		err = boil.NewEditor(config.Config, state.meta).EditPostExec()
 	case "groups":
-		err = boil.NewEditor(config.Config, meta).EditGroups()
-	case "file":
-		err = openFile(config.EditPath)
-	case "touch":
-		err = touchFile(config.EditPath)
-	case "directory":
-		err = openDirectory(config.EditPath)
-	case "add":
-		err = addDirectory(config.EditPath)
-	case "remove":
-		err = remove(config.EditPath, config.ForceRemoveNonEmptyDir)
+		err = boil.NewEditor(config.Config, state.meta).EditGroups()
+	case "addFile":
+		absTarget = filepath.Join(state.repo.Location(), state.tmplPath, config.EditTarget)
+		if tgtExists, err = state.repo.Exists(absTarget); err != nil {
+			return
+		}
+		for _, entry := range state.meta.Files {
+			if strings.EqualFold(entry, config.EditTarget) {
+				entryExists = true
+				break
+			}
+		}
+		if tgtExists && entryExists {
+			fmt.Printf("file '%s' already exists\n", config.EditTarget)
+			return nil
+		}
+		fmt.Println("addFile")
+	case "remFile":
+		fmt.Println("remFile")
+	case "addDir":
+		fmt.Println("addDir")
+	case "remDir":
+		fmt.Println("remDir")
+
 	default:
 		panic("unknown edit action")
 	}
@@ -101,48 +130,8 @@ func Run(config *Config) (err error) {
 		return
 	}
 	if config.Config.Overrides.Verbose {
-		meta.Print()
+		state.meta.Print()
 	}
-	return repo.SaveMeta(meta)
+	return state.repo.SaveMeta(state.meta)
 
-}
-
-var errNotImplemented = errors.New("not implemented")
-
-// openFile opens a file at the path relative to the template directory with
-// the editor and returns nil or an error if one occurs.
-func openFile(path string) (err error) {
-	return errNotImplemented
-}
-
-// touchFile creates a new template file at the path relative to the template
-// directory and returns nil or an error if one occured.
-func touchFile(path string) (err error) {
-	return errNotImplemented
-}
-
-// deleteFile deletes a template file at the path relative to the template
-// directory and returns nil or an error if one occured.
-func deleteFile(path string) (err error) {
-	return errNotImplemented
-}
-
-// openDirectory opens a directory at the path relative to the template
-// directory with the editor and returns nil or an error if one occurs.
-func openDirectory(path string) (err error) {
-	return errNotImplemented
-}
-
-// addDirectory creates a new directory at the path relative to the template
-// directory and returns nil or an error if one occured. If the directory
-// already exists the function is a no-op.
-func addDirectory(path string) (err error) {
-	return errNotImplemented
-}
-
-// removeDirectory deletes a directory at the path relative to the template
-// directory and returns nil or an error if one occured. If force is true
-// removes even if not empty otherwise generates an error.
-func remove(path string, force bool) (err error) {
-	return
 }

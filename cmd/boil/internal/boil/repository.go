@@ -37,8 +37,9 @@ type Repository interface {
 	// OpenMeta returns a *Metafile at path or an error if it does not exist or
 	// some other error occurs.
 	OpenMeta(path string) (*Metafile, error)
-	// SaveMeta saves the Metafile into repository or returns an error.
-	// It overwrites the target if it exists or creates it if it does not.
+	// SaveMeta saves the Metafile into repository accorsing to its Path or
+	// returns an error. It overwrites the target if it exists or creates it if
+	// it does not. Creates required directories along the path.
 	SaveMeta(meta *Metafile) error
 
 	// Exists returns true if file or dir exists at path or an error.
@@ -59,8 +60,8 @@ type Repository interface {
 	Remove(path string) error
 }
 
-// OpenRepository returns an implementation of a Repository depending on
-// repository path format.
+// OpenRepository opens a repository at the specified path. It returns an
+// implementation that handles the specific path format.
 //
 // Currently supported backends:
 // * local filesystem (DiskRepository)

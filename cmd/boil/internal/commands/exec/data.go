@@ -5,8 +5,6 @@
 package exec
 
 import (
-	"fmt"
-
 	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
 )
 
@@ -23,36 +21,6 @@ func NewData() *Data {
 	return &Data{
 		Vars: make(boil.Variables),
 	}
-}
-
-// AddVar adds a variable and returns nil on success or an error if a variable
-// under specified key already exists.
-func (self *Data) AddVar(key string, value any) error {
-	if _, exists := self.Vars[key]; exists {
-		return fmt.Errorf("variable %s already registered", key)
-	}
-	self.Vars[key] = value
-	return nil
-}
-
-// InitStandardVars initializes values of standard variables.
-func (self *Data) InitStandardVars(state *state) error {
-	self.Vars["OutputDirectory"] = state.OutputDir
-	self.Vars["TemplatePath"] = state.TemplatePath
-	return nil
-}
-
-// MergeVars merges vars to self.Vars or returns an error.
-// If a key already exists and has a value an error is returned.
-func (self *Data) MergeVars(vars boil.Variables) error {
-	var exists bool
-	for k, v := range vars {
-		if _, exists = self.Vars[k]; exists && self.Vars[k] != nil {
-			return fmt.Errorf("duplicate variable '%s'", k)
-		}
-		self.Vars[k] = v
-	}
-	return nil
 }
 
 // ReplaceAll replaces all known variable placeholders in input string with

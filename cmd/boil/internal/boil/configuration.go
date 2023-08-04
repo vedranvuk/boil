@@ -57,8 +57,11 @@ func DefaultConfig() (config *Config, err error) {
 			Name: name,
 		},
 		ExternalEditor: Action{
-			Program:     "code",
-			Arguments:   []string{"$TemplatePath"},
+			Program: "code",
+			Arguments: []string{
+				"-n",
+				"$" + VarEditTarget.String(),
+			},
 			Environment: make(map[string]string),
 		},
 		RepositoryPath: DefaultRepositoryDir(),

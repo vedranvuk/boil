@@ -16,6 +16,9 @@ const (
 	VarTemplatePath
 	// VarOutputDirectory is exec command output-dir.
 	VarOutputDirectory
+	// VarEditTarget is the target to be edited by external editor.
+	// It's either a file or a directory, depending on the edit action.
+	VarEditTarget
 )
 
 // StdVariables is a slice of standard variables.
@@ -23,7 +26,11 @@ var StdVariables = []string{
 	"WorkingDirectory",
 	"TemplatePath",
 	"OutputDirectory",
+	"EditTarget",
 }
+
+// String reurns string representation of Variable.
+func (self Variable) String() string { return StdVariables[self] }
 
 // Variables defines a map of variables keying variable names to their values.
 //

@@ -27,7 +27,7 @@ func NewEditor(config *Config, metafile *Metafile) *Editor {
 	}
 }
 
-// Wizard executes a wizard that completely defines the metafile being edited.
+// Wizard executes a wizard that completely defines the loaded metafile.
 func (self *Editor) Wizard() (err error) {
 
 	var truth bool
