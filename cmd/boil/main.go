@@ -213,6 +213,11 @@ func main() {
 						Name: "template-path",
 						Help: "Path of the template to be edited.",
 					},
+					&cmdline.Boolean{
+						LongName:  "local",
+						ShortName: "l",
+						Help:      "Edit template in current directory.",
+					},
 				},
 				Handler: func(c cmdline.Context) error {
 					return edit.Run(&edit.Config{
@@ -357,7 +362,12 @@ func main() {
 					&cmdline.Repeated{
 						LongName:  "var",
 						ShortName: "r",
-						Help:      "Define a variable.",
+						Help:      "Define a new variable or set a prompt variable value.",
+					},
+					&cmdline.Repeated{
+						LongName:  "go-input",
+						ShortName: "g",
+						Help:      "Input Go file or package.",
 					},
 				},
 				Handler: func(c cmdline.Context) error {
@@ -370,6 +380,7 @@ func main() {
 						}
 						vars[a[0]] = a[1]
 					}
+
 					// Execute Exec Command.
 					return exec.Run(&exec.Config{
 						TemplatePath:  c.RawValues("template-path").First(),
@@ -378,9 +389,9 @@ func main() {
 						NoExecute:     c.IsParsed("no-execute"),
 						NoPrompts:     c.IsParsed("no-prompts"),
 						EditAfterExec: c.IsParsed("edit"),
-
-						Vars:   vars,
-						Config: programConfig,
+						GoInputs:      c.RawValues("go-inputs"),
+						Vars:          vars,
+						Config:        programConfig,
 					})
 				},
 			},

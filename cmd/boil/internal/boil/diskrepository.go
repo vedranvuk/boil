@@ -74,7 +74,10 @@ func (self *DiskRepository) HasMeta(path string) (exists bool, err error) {
 }
 
 func (self *DiskRepository) OpenMeta(path string) (meta *Metafile, err error) {
-	return readMeta(filepath.Join(self.root, path, MetafileName))
+	if meta, err = readMeta(filepath.Join(self.root, path, MetafileName)); meta != nil {
+		meta.Path = path
+	}
+	return
 }
 
 func (self *DiskRepository) SaveMeta(meta *Metafile) (err error) {
@@ -136,6 +139,5 @@ func readMeta(filename string) (meta *Metafile, err error) {
 	if err = json.Unmarshal(data, meta); err != nil {
 		return nil, fmt.Errorf("unmarshal metafile: %w", err)
 	}
-	meta.Path = filepath.Dir(filename)
 	return
 }

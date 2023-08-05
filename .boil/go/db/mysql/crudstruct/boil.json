@@ -1,0 +1,23 @@
+{
+	"description": "Generate CRUD methods for a struct using mysql.",
+	"author": {
+		"name": "Vedran"
+	},
+	"version": "1.0.0",
+	"url": "https://",
+	"files": [],
+	"directories": [],
+	"prompts": [
+		{
+			"variable": "FileName",
+			"description": "Name of the output file.",
+			"regexp": ".*"
+		},
+		{
+			"variable": "PackageName",
+			"description": "Name of the package output file belongs to.",
+			"regexp": ".*"
+		}
+	],
+	"actions": {}
+}

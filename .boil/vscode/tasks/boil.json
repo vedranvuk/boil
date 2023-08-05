@@ -1,0 +1,12 @@
+{
+	"description": "VS Code Boil Tasks.",
+	"author": {
+		"name": "Vedran"
+	},
+	"version": "1.0.0",
+	"url": "https://",
+	"files": [".vscode/tasks.json"],
+	"directories": [],
+	"prompts": [],
+	"actions": {}
+}

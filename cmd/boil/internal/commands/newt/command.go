@@ -27,8 +27,8 @@ func Run(config *Config) (err error) {
 
 	var (
 		repo boil.Repository
-		vars boil.Variables
 		meta *boil.Metafile
+		vars = make(boil.Variables)
 	)
 
 	if repo, err = boil.OpenRepository(config.Config.GetRepositoryPath()); err != nil {

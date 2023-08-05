@@ -5,6 +5,7 @@
 package exec
 
 import (
+	"github.com/vedranvuk/boil/cmd/boil/internal/bast"
 	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
 )
 
@@ -13,6 +14,8 @@ type Data struct {
 	// Vars is a collection of system variables always present on template
 	// execution, generated from environment.
 	Vars boil.Variables
+	// Bast is the bastard go ast.
+	Bast *bast.Bast
 }
 
 // NeData returns new *Data initialized with standard variables or an error if

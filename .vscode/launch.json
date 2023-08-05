@@ -5,173 +5,45 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"name": "boil -v",
+			"name": "boil",
 			"type": "go",
 			"request": "launch",
 			"mode": "auto",
 			"program": "${workspaceFolder}/cmd/boil",
-			"args": [
-				"-v"
-			],
+			"args": "-v -r ${workspaceFolder}/.boil"
 		},
 		{
-			"name": "boil help",
+			"name": "boil tasks: ",
 			"type": "go",
 			"request": "launch",
 			"mode": "auto",
 			"program": "${workspaceFolder}/cmd/boil",
-			"args": [
-				"-h"
-			]
+			"args": "-v -r ${workspaceFolder}/.boil exec "
 		},
 		{
-			"name": "boil exec cliapp repo",
+			"name": "boil: test go-inputs",
 			"type": "go",
 			"request": "launch",
 			"mode": "auto",
 			"console": "integratedTerminal",
+			"internalConsoleOptions": "neverOpen",
 			"program": "${workspaceFolder}/cmd/boil",
 			"args": [
 				"-v",
 				"-r",
-				"${workspaceFolder}/_testdata/testrepo",
+				"${workspaceFolder}/.boil",
 				"exec",
-				"apps/cliapp#all",
-				"-o",
-				"${workspaceFolder}/_testdata/output/cliapprepo",
-				"-r",
-				"ProjectName=cliapp",
-				"-r",
-				"ModulePath=github.com/vedranvuk/cliapp",
-				"-w"
-			]
-		},
-		{
-			"name": "boil exec cliapp absolute",
-			"type": "go",
-			"request": "launch",
-			"mode": "auto",
-			"console": "integratedTerminal",
-			"program": "${workspaceFolder}/cmd/boil",
-			"args": [
-				"-v",
-				"exec",
-				"${workspaceFolder}/_testdata/testrepo/apps/cliapp#all",
-				"-r",
-				"ProjectName=cliapp",
-				"-r",
-				"ModulePath=github.com/vedranvuk/cliapp",
-				"-w"
-			]
-		},
-		{
-			"name": "boil list",
-			"type": "go",
-			"request": "launch",
-			"mode": "auto",
-			"program": "${workspaceFolder}/cmd/boil",
-			"args": [
-				"-v",
-				"list"
-			]
-		},
-		{
-			"name": "boil snap",
-			"type": "go",
-			"request": "launch",
-			"mode": "auto",
-			"cwd": "${workspaceFolder}/_testdata/snapshot",
-			"program": "${workspaceFolder}/cmd/boil",
-			"args": [
-				"-v",
-				"snap",
-				"snapshot",
-				"-w"
-			]
-		},
-		{
-			"name": "boil snap -z",
-			"type": "go",
-			"request": "launch",
-			"mode": "auto",
-			"console": "integratedTerminal",
-			"cwd": "${workspaceFolder}/_testdata/snapshot",
-			"program": "${workspaceFolder}/cmd/boil",
-			"args": [
-				"-v",
-				"snap",
-				"snapshot",
+				"go/testgoinputs",
 				"-w",
-				"-z"
+				"-g",
+				"${workspaceFolder}/_testdata/input/testgoinputs/file1.go",
+				"-r",
+				"InputType=MyInterface",
+				"-r",
+				"OutputFile=output_generated",
+				"-r",
+				"PackageName=main"
 			]
-		},
-		{
-			"name": "boil new test",
-			"type": "go",
-			"request": "launch",
-			"mode": "auto",
-			"console": "integratedTerminal",
-			"program": "${workspaceFolder}/cmd/boil",
-			"args": [
-				"-v",
-				"new",
-				"test"
-			]
-		},
-		{
-			"name": "boil new test/test",
-			"type": "go",
-			"request": "launch",
-			"mode": "auto",
-			"console": "integratedTerminal",
-			"program": "${workspaceFolder}/cmd/boil",
-			"args": [
-				"-v",
-				"new",
-				"test/test"
-			]
-		},
-		{
-			"name": "boil edit snapshot prompts",
-			"type": "go",
-			"request": "launch",
-			"mode": "auto",
-			"console": "integratedTerminal",
-			"program": "${workspaceFolder}/cmd/boil",
-			"args": [
-				"-v",
-				"edit",
-				"snapshot",
-				"prompts"
-			]
-		},
-		{
-			"name": "boil edit test all",
-			"type": "go",
-			"request": "launch",
-			"mode": "auto",
-			"console": "integratedTerminal",
-			"program": "${workspaceFolder}/cmd/boil",
-			"args": [
-				"-v",
-				"edit",
-				"test",
-				"all"
-			]
-		},
-		{
-			"name": "boil edit go/cmd prompts",
-			"type": "go",
-			"request": "launch",
-			"mode": "auto",
-			"console": "integratedTerminal",
-			"program": "${workspaceFolder}/cmd/boil",
-			"args": [
-				"-v",
-				"edit",
-				"go/cmd",
-				"prompts"
-			]
-		},
+		}
 	]
 }

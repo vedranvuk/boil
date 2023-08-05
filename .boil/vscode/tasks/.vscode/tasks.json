@@ -28,36 +28,6 @@
 				"kind": "build"
 			},
 			"problemMatcher": []
-		},
-		{
-			"label": "boil: test",
-			"type": "shell",
-			"command": "boil",
-			"args": [
-				"-v",
-				"-r",
-				"${workspaceFolder/.boil}",
-				"exec",
-				""
-			],
-			"options": {
-				"cwd": "${fileDirname}",
-				"env": {},
-			},
-			"presentation": {
-				"clear": true,
-				"close": false,
-				"echo": true,
-				"focus": false,
-				"panel": "shared",
-				"reveal": "silent",
-				"revealProblems": "onProblem",
-				"showReuseMessage": false
-			},
-			"group": {
-				"kind": "build"
-			},
-			"problemMatcher": []
 		}
 	]
 }

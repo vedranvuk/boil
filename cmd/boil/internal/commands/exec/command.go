@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/vedranvuk/boil/cmd/boil/internal/bast"
 	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
 )
 
@@ -53,6 +54,10 @@ type Config struct {
 
 	// EditAfterExec if true opens the output with the editor.
 	EditAfterExec bool
+
+	// GoInputs is a list of paths of go files or packages to parse and make
+	// their AST available to template files.
+	GoInputs []string
 
 	// Vars are variables given by the user on command line.
 	// These variables will be available via .Vars template field.
@@ -151,8 +156,12 @@ func Run(config *Config) (err error) {
 	state.Data.Vars.MaybeSetString(boil.VarOutputDirectory, &state.OutputDir)
 	// Append system variables to state vars if not given
 	state.Data.Vars.AddNew(boil.Variables{
-		boil.VarTemplatePath.String():      state.TemplatePath,
+		boil.VarTemplatePath.String(): state.TemplatePath,
 	})
+	// Load bast.
+	if state.Data.Bast, err = bast.Load(config.GoInputs...); err != nil {
+		return fmt.Errorf("error processing go input files: %w", err)
+	}
 
 	// Expand variable placeholders in paths.
 	if err = state.Templates.DetermineTemplateTargets(state); err != nil {

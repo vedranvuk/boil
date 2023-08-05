@@ -33,7 +33,6 @@ func Run(config *Config) (err error) {
 	if repo, err = boil.OpenRepository(config.Config.GetRepositoryPath()); err != nil {
 		return fmt.Errorf("open repository: %w", err)
 	}
-
 	if meta, err = repo.LoadMetamap(); err != nil {
 		return fmt.Errorf("load metamap: %w", err)
 	}
@@ -43,7 +42,6 @@ func Run(config *Config) (err error) {
 			list[k] = v
 		}
 	}
-
 	if config.Prefix != "" {
 		fmt.Printf("Templates found in current repository at %s:\n", config.Prefix)
 	} else {

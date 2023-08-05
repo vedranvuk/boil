@@ -327,7 +327,7 @@ func (self *Editor) EditPrompts() (err error) {
 		return
 	}
 	if variable == "" {
-		return errors.New("aborted")
+		return nil
 	}
 	if prompt = self.metafile.Prompts.FindByVariable(variable); prompt == nil {
 		panic("prompt not found")

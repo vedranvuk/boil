@@ -26,6 +26,8 @@ type Config struct {
 	ForceRemoveNonEmptyDir bool
 	// Open the file with editor after touching it.
 	EditAfterTouch bool
+	// LocalEdit if true edits the template in the current directory.
+	LocalEdit bool
 	// Config is the loaded program configuration.
 	Config *boil.Config
 }
@@ -42,8 +44,6 @@ type state struct {
 // Run executes the Edit command configured by config.
 // If an error occurs it is returned and the operation may be considered failed.
 func Run(config *Config) (err error) {
-
-	fmt.Printf("%#v\n", config)
 
 	var state = &state{
 		config:   config.Config,
@@ -76,7 +76,7 @@ func Run(config *Config) (err error) {
 
 	var (
 		tgtExists, entryExists bool
-		absTarget string
+		absTarget              string
 	)
 	switch config.EditAction {
 	case "edit":
