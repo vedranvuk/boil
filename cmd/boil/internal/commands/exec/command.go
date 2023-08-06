@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/vedranvuk/boil/cmd/boil/internal/bast"
 	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
+	"github.com/vedranvuk/boil/pkg/bast"
 )
 
 // Config is the Exec command configuration.
@@ -160,7 +160,7 @@ func Run(config *Config) (err error) {
 	})
 	// Load bast.
 	if state.Data.Bast, err = bast.Load(config.GoInputs...); err != nil {
-		return fmt.Errorf("error processing go input files: %w", err)
+		return fmt.Errorf("process go input files: %w", err)
 	}
 
 	// Expand variable placeholders in paths.

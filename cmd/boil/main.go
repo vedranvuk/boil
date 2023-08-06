@@ -389,7 +389,7 @@ func main() {
 						NoExecute:     c.IsParsed("no-execute"),
 						NoPrompts:     c.IsParsed("no-prompts"),
 						EditAfterExec: c.IsParsed("edit"),
-						GoInputs:      c.RawValues("go-inputs"),
+						GoInputs:      c.RawValues("go-input"),
 						Vars:          vars,
 						Config:        programConfig,
 					})

@@ -5,7 +5,7 @@
 package exec
 
 import (
-	"github.com/vedranvuk/boil/cmd/boil/internal/bast"
+	"github.com/vedranvuk/boil/pkg/bast"
 	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
 )
 

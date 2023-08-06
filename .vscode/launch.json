@@ -28,8 +28,8 @@
 			"console": "integratedTerminal",
 			"internalConsoleOptions": "neverOpen",
 			"program": "${workspaceFolder}/cmd/boil",
+			"cwd": "${workspaceFolder}",
 			"args": [
-				"-v",
 				"-r",
 				"${workspaceFolder}/.boil",
 				"exec",
@@ -42,7 +42,9 @@
 				"-r",
 				"OutputFile=output_generated",
 				"-r",
-				"PackageName=main"
+				"PackageName=main",
+				"-o",
+				"${workspaceFolder}/cmd/boil"
 			]
 		}
 	]
