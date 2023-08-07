@@ -67,11 +67,11 @@
 				"-g",
 				"${workspaceFolder}/_testdata/input/stringer/input.go",
 				"-r",
-				"FileName=$TypeName_stringer",
+				"TypeName=AnEnum",
+				"-r",
+				"FileName=anenum_stringer",
 				"-r",
 				"PackageName=stringer",
-				"-r",
-				"TypeName=AnEnum",
 				"-o",
 				"${workspaceFolder}/_testdata/output/stringer"
 			]

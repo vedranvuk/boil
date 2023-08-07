@@ -119,23 +119,67 @@ func appendFile(fs *token.FileSet, in *ast.File, out *[]*File) {
 
 func appendDeclaration(fs *token.FileSet, in ast.Node, out *[]Declaration) {
 	switch n := in.(type) {
+
 	case *ast.GenDecl:
 		switch n.Tok {
-		case token.CONST:
+		case token.CONST, token.VAR:
+
+			var (
+				lastType  string
+			)
 			for _, spec := range n.Specs {
-				var vs, ok = spec.(*ast.ValueSpec)
+				var (
+					vs, ok = spec.(*ast.ValueSpec)
+					id     *ast.Ident
+				)
 				if !ok {
 					continue
 				}
-				appendConst(vs, out)
-			}
-		case token.VAR:
-			for _, spec := range n.Specs {
-				var vs, ok = spec.(*ast.ValueSpec)
-				if !ok {
-					continue
+				for i := 0; i < len(vs.Names); i++ {
+					var (
+						name, typ, val string
+						docs, comments []string
+					)
+					name = vs.Names[i].Name
+					appendCommentGroup(vs.Comment, &comments)
+					appendCommentGroup(vs.Doc, &docs)
+					if vs.Type != nil {
+						if id, ok = vs.Type.(*ast.Ident); !ok {
+							continue
+						}
+						typ = id.Name
+						lastType = id.Name
+					} else if lastType != "" {
+						typ = lastType
+					}
+
+					if vs.Values != nil {
+						switch v := vs.Values[i].(type) {
+						case *ast.Ident:
+							val = v.Name
+						case *ast.BasicLit:
+							val, _ = strconv.Unquote(v.Value)
+						case *ast.BinaryExpr:
+							var (
+								lit *ast.BasicLit
+							)
+							if id, ok = v.X.(*ast.Ident); !ok || id.Name != "iota" {
+								continue
+							}
+							if lit, ok = v.Y.(*ast.BasicLit); !ok {
+								continue
+							}
+							val = fmt.Sprintf("%s %s %s", id.Name, v.Op.String(), lit.Value)
+						default:
+							continue
+						}
+					}
+					if n.Tok == token.CONST {
+						*out = append(*out, &Const{comments, docs, name, typ, val})
+					} else if n.Tok == token.VAR {
+						*out = append(*out, &Var{comments, docs, name, typ, val})
+					}
 				}
-				appendVar(vs, out)
 			}
 		case token.TYPE:
 			for _, spec := range n.Specs {

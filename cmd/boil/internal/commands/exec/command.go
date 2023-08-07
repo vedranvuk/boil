@@ -189,6 +189,7 @@ func Run(config *Config) (err error) {
 			fmt.Printf("Template %s\n", m.Metafile.Path)
 			m.Metafile.Print()
 		}
+		state.Data.Vars.Print()
 	}
 	if err = state.Templates.ExecPreExecuteActions(state.Data.Vars); err != nil {
 		return fmt.Errorf("pre execute action failed: %w", err)

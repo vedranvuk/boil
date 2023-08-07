@@ -18,7 +18,7 @@ func (self *Package) ConstsOfType(name string) (out []Declaration) {
 			if !ok {
 				continue
 			}
-			if c.Name == name {
+			if c.Type == name {
 				out = append(out, decl)
 			}
 		}
@@ -33,7 +33,7 @@ func (self *Package) VarsOfType(name string) (out []Declaration) {
 			if !ok {
 				continue
 			}
-			if c.Name == name {
+			if c.Type == name {
 				out = append(out, decl)
 			}
 		}

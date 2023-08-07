@@ -4,7 +4,12 @@
 
 package boil
 
-import "strings"
+import (
+	"fmt"
+	"os"
+	"strings"
+	"text/tabwriter"
+)
 
 // Variable defines a known variable.
 type Variable int
@@ -80,4 +85,16 @@ func (self Variables) AddNew(variables Variables) Variables {
 		self[k] = v
 	}
 	return self
+}
+
+func (self Variables) Print()  {
+	if len(self) == 0 {
+		return
+	}
+	fmt.Println("Variables:")
+	var wr = tabwriter.NewWriter(os.Stdout, 2, 2, 2, 32, 0)
+	for k, v := range self {
+		fmt.Fprintf(wr, "%s\t%v\n", k, v)
+	}
+	wr.Flush()
 }
