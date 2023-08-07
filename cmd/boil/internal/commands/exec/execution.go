@@ -13,7 +13,7 @@ import (
 	"text/tabwriter"
 	"text/template"
 
-	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
+	"github.com/vedranvuk/boil/pkg/boil"
 )
 
 // Execution defines the source and target of a template file to be executed.

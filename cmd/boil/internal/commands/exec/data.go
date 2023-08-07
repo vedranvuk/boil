@@ -6,7 +6,7 @@ package exec
 
 import (
 	"github.com/vedranvuk/boil/pkg/bast"
-	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
+	"github.com/vedranvuk/boil/pkg/boil"
 )
 
 // Data is the top level data structure passed to a Template file.

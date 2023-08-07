@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
+	"github.com/vedranvuk/boil/pkg/boil"
 )
 
 // Config is the List command configuration.
