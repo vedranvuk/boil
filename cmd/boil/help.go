@@ -351,7 +351,8 @@ input file.
 It is accessible from {{.Bast}} pipeline from inside a template file or via 
 template functions.
 
-TODO: Complete BAST object reference when complete.
+TODO: BAST object reference.
+TODO: BAST function reference.
 `
 
 func printBast() { fmt.Print(bastText) }

@@ -5,7 +5,9 @@
 	},
 	"version": "1.0.0",
 	"url": "https://",
-	"files": [],
+	"files": [
+		"$FileName_string.go"
+	],
 	"directories": [],
 	"prompts": [
 		{

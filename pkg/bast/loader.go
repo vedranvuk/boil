@@ -1,8 +1,3 @@
-// Copyright 2023 Vedran Vuk. All rights reserved.
-// Use of this source code is governed by a MIT
-// license that can be found in the LICENSE file.
-
-// Package bast implements a bastard ast.
 package bast
 
 import (
@@ -10,14 +5,19 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"io"
 	"os"
-	"text/template"
+	"strconv"
 )
 
 // Load loads bast of inputs which can be module paths, absolute or relative
 // paths to go files or packages. If no inputs are given Load returns an empty
-// bast. if an error occurs it is returned.
+// bast.
+//
+// Inputs that point to files, i.e. are outside of a package are put into a
+// placeholder package named "command-line-package" which mirrors how
+// "golang.org/x/tools/go/packages" names it.
+//
+// If an error occurs it is returned.
 func Load(inputs ...string) (bast *Bast, err error) {
 
 	bast = new(Bast)
@@ -69,206 +69,86 @@ func Load(inputs ...string) (bast *Bast, err error) {
 	return
 }
 
-// Bast is a top level struct for accessing processed go files.
-type Bast struct {
-	Packages []*Package
-}
-
-func (self *Bast) Print(w io.Writer) {
-	for _, pkg := range self.Packages {
-		fmt.Printf("Package %s\n", pkg.Name)
-		for _, file := range pkg.Files {
-			fmt.Printf("  File: %s\n", file.Name)
-			for _, decl := range file.Declarations {
-				switch d := decl.(type) {
-				case *Struct:
-					fmt.Printf("    Struct %s\n", d.Name)
-					for _, field := range d.Fields {
-						fmt.Printf("      Field %s (%s)\n", field.Name, field.Type)
-					}
-				case *Interface:
-					fmt.Printf("    Interface %s\n", d.Name)
-					for _, method := range d.Methods {
-						fmt.Printf("      Method %s\n", method.Name)
-					}
-				}
-			}
-		}
+// ParseSrc returns a Bast of input source src or an error if one occurs.
+func ParseSrc(src string) (bast *Bast, err error) {
+	bast = new(Bast)
+	var (
+		pkg  = new(Package)
+		fset = token.NewFileSet()
+		file *ast.File
+	)
+	if file, err = parser.ParseFile(fset, "", src, parseMode); err != nil {
+		return
 	}
-}
-
-// FuncMap returns Bast template functions.
-func (self Bast) FuncMap() template.FuncMap {
-	return template.FuncMap{
-		"declaration": self.Declaration,
-	}
-}
-
-// Declaration returns a top level declaration with the specified name.
-// Template must know the type of the returned declaration.
-func (self Bast) Declaration(name string) (result interface{}) {
+	pkg.Name = "command-line-package"
+	appendFile(fset, file, &pkg.Files)
+	bast.Packages = append(bast.Packages, pkg)
 	return
 }
 
-// Package represents a Go package.
-type Package struct {
-	// Name is the package name, without path.
-	Name string
-	// Files is a list of files in the package.
-	Files []*File
-}
-
-// File describes a go source file.
-type File struct {
-	// Comments are the file comments, grouped by separation, without positions,
-	// including docs.
-	Comments [][]string
-	// Doc is the file doc comment.
-	Doc []string
-	// Name is the File name, without path.
-	Name string
-	// Imports is a list of file imports.
-	Imports []*Import
-	// Declarations is a list of top level declarations in the file.
-	Declarations []interface{}
-}
-
-// Import represents a package import entry.
-type Import struct {
-	// Comment is the import comment.
-	Comment []string
-	// Doc is the import doc.
-	Doc []string
-	// Name is the custom import name, possibly empty.
-	Name string
-	// Path is the import path.
-	Path string
-}
-
-// Interface represents an interface.
-type Interface struct {
-	// Comment is the interface comment.
-	Comment []string
-	// Doc is the interface doc comment.
-	Doc []string
-	// Name is the interface name.
-	Name string
-	// Methods is a list of methods defined by the interface.
-	Methods []*Method
-}
-
-// Func represents a func.
-type Func struct {
-	// Comment is the func comment.
-	Comment []string
-	// Doc is the func doc comment.
-	Doc []string
-	// Name is the func name.
-	Name string
-	//  Arguments is a list of func arguments.
-	Arguments []*Pair
-	// Returns is a list of func returns.
-	Returns []*Pair
-}
-
-// Method represents a method.
-type Method struct {
-	// Func embeds all Func properties.
-	Func
-	// Receiver is the method receiver.
-	Receiver *Pair
-}
-
-// Pair represents a key:value/name:type pair..
-// It may represent a method receiver, func argument, or result or a struct
-// field.
-type Pair struct {
-	// Name is the left pair part.
-	Name string
-	// Type is the right pair part.
-	Type string
-}
-
-// Struct represents a struct type.
-type Struct struct {
-	// Comment is the struct comment.
-	Comment []string
-	// Doc is the struct doc comment.
-	Doc []string
-	// Name is the struct name.
-	Name string
-	// Fields is a list of struct fields.
-	Fields []*Field
-}
-
-// Field represents a struct field.
-type Field struct {
-	// Comment is the field comment.
-	Comment []string
-	// Doc is the field doc comment.
-	Doc []string
-	// Name is the field name.
-	Name string
-	// Type is the field type.
-	Type string
-	// Tag is the field raw tag string.
-	Tag string
-}
+// parseMode is the mode Bast uses for parsing go files.
+const parseMode = parser.ParseComments | parser.DeclarationErrors | parser.AllErrors
 
 func appendPackage(fs *token.FileSet, in *ast.Package, out *[]*Package) {
 	var val = new(Package)
 	val.Name = in.Name
-
 	for _, file := range in.Files {
 		appendFile(fs, file, &val.Files)
 	}
-
 	return
 }
 
 func appendFile(fs *token.FileSet, in *ast.File, out *[]*File) {
 	var val = new(File)
 	val.Name = in.Name.Name
-
 	var cg []string
 	for _, comment := range in.Comments {
 		appendCommentGroup(comment, &cg)
 		val.Comments = append(val.Comments, cg)
 	}
-
 	appendCommentGroup(in.Doc, &val.Doc)
-
 	for _, imprt := range in.Imports {
 		appendImportSpec(imprt, &val.Imports)
 	}
-
 	for _, d := range in.Decls {
 		appendDeclaration(fs, d.(ast.Node), &val.Declarations)
 	}
-
 	*out = append(*out, val)
-
 	return
 }
 
-func appendDeclaration(fs *token.FileSet, in ast.Node, out *[]interface{}) {
+func appendDeclaration(fs *token.FileSet, in ast.Node, out *[]Declaration) {
 	switch n := in.(type) {
 	case *ast.GenDecl:
-		if n.Tok != token.TYPE {
-			return
-		}
-		for _, spec := range n.Specs {
-
-			var ts, ok = spec.(*ast.TypeSpec)
-			if !ok || ts.Assign != token.NoPos {
-				continue
+		switch n.Tok {
+		case token.CONST:
+			for _, spec := range n.Specs {
+				var vs, ok = spec.(*ast.ValueSpec)
+				if !ok {
+					continue
+				}
+				appendConst(vs, out)
 			}
-
-			switch ts.Type.(type) {
-			case *ast.InterfaceType:
-				appendInterface(ts, out)
-			case *ast.StructType:
-				appendStruct(ts, out)
+		case token.VAR:
+			for _, spec := range n.Specs {
+				var vs, ok = spec.(*ast.ValueSpec)
+				if !ok {
+					continue
+				}
+				appendVar(vs, out)
+			}
+		case token.TYPE:
+			for _, spec := range n.Specs {
+				var ts, ok = spec.(*ast.TypeSpec)
+				if !ok || ts.Assign != token.NoPos {
+					continue
+				}
+				switch ts.Type.(type) {
+				case *ast.InterfaceType:
+					appendInterface(ts, out)
+				case *ast.StructType:
+					appendStruct(ts, out)
+				}
 			}
 		}
 	}
@@ -279,11 +159,9 @@ func appendCommentGroup(in *ast.CommentGroup, out *[]string) {
 	if in == nil {
 		return
 	}
-
 	for _, entry := range in.List {
 		*out = append(*out, entry.Text)
 	}
-
 	return
 }
 
@@ -298,7 +176,66 @@ func appendImportSpec(in *ast.ImportSpec, out *[]*Import) {
 	return
 }
 
-func appendInterface(in *ast.TypeSpec, out *[]interface{}) {
+func appendConst(in *ast.ValueSpec, out *[]Declaration) {
+	for i := 0; i < len(in.Names); i++ {
+		var (
+			val = new(Const)
+			id  *ast.Ident
+			lit *ast.BasicLit
+			ok  bool
+		)
+		val.Name = in.Names[i].Name
+		appendCommentGroup(in.Comment, &val.Comment)
+		appendCommentGroup(in.Doc, &val.Doc)
+
+		if id, ok = in.Type.(*ast.Ident); !ok {
+			continue
+		}
+		val.Type = id.Name
+
+		switch v := in.Values[i].(type) {
+		case *ast.BasicLit:
+			val.Value, _ = strconv.Unquote(v.Value)
+		case *ast.BinaryExpr:
+			if id, ok = v.X.(*ast.Ident); !ok {
+				continue
+			}
+			if lit, ok = v.Y.(*ast.BasicLit); !ok {
+				continue
+			}
+			val.Value = fmt.Sprintf("%s %s %s", id.Name, v.Op.String(), lit.Value)
+		default:
+			continue
+		}
+
+		*out = append(*out, val)
+	}
+}
+
+func appendVar(in *ast.ValueSpec, out *[]Declaration) {
+	for i := 0; i < len(in.Names); i++ {
+		var (
+			val = new(Var)
+			id  *ast.Ident
+			lit *ast.BasicLit
+			ok  bool
+		)
+		val.Name = in.Names[i].Name
+		appendCommentGroup(in.Comment, &val.Comment)
+		appendCommentGroup(in.Doc, &val.Doc)
+		if id, ok = in.Type.(*ast.Ident); !ok {
+			continue
+		}
+		if lit, ok = in.Values[i].(*ast.BasicLit); !ok {
+			continue
+		}
+		val.Type = id.Name
+		val.Value, _ = strconv.Unquote(lit.Value)
+		*out = append(*out, val)
+	}
+}
+
+func appendInterface(in *ast.TypeSpec, out *[]Declaration) {
 	var it, ok = in.Type.(*ast.InterfaceType)
 	if !ok {
 		return
@@ -314,7 +251,7 @@ func appendInterface(in *ast.TypeSpec, out *[]interface{}) {
 	return
 }
 
-func appendStruct(in *ast.TypeSpec, out *[]interface{}) {
+func appendStruct(in *ast.TypeSpec, out *[]Declaration) {
 	var st, ok = in.Type.(*ast.StructType)
 	if !ok {
 		return
@@ -341,14 +278,12 @@ func appendMethod(in *ast.Field, out *[]*Method) {
 	if !ok {
 		return
 	}
-
 	if ft.TypeParams != nil {
 		val.Receiver = &Pair{
 			Name: ft.TypeParams.List[0].Names[0].Name,
 			Type: ft.TypeParams.List[0].Type.(*ast.Ident).Name,
 		}
 	}
-
 	if ft.Params != nil {
 		var arg = new(Pair)
 		for _, param := range ft.Params.List {
@@ -357,7 +292,6 @@ func appendMethod(in *ast.Field, out *[]*Method) {
 			val.Arguments = append(val.Arguments, arg)
 		}
 	}
-
 	if ft.Results != nil {
 		var arg = new(Pair)
 		for _, param := range ft.Results.List {
@@ -366,7 +300,6 @@ func appendMethod(in *ast.Field, out *[]*Method) {
 			val.Returns = append(val.Returns, arg)
 		}
 	}
-
 	return
 }
 
@@ -377,9 +310,7 @@ func appendField(in *ast.Field, out *[]*Field) {
 	}
 	appendCommentGroup(in.Comment, &val.Comment)
 	appendCommentGroup(in.Doc, &val.Doc)
-
 	val.Type = in.Type.(*ast.Ident).Name
 	val.Tag = in.Tag.Value
-
 	return
 }

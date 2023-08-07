@@ -1,0 +1,16 @@
+{
+	"name": "stringer",
+	"description": "A stringer-like template.",
+	"author": {
+		"name": "Vedran",
+		"email": "vedranvuk82@gmail.com"
+	},
+	"version": "1.0.0",
+	"url": "https://",
+	"files": [
+		"$FileName.go"
+	],
+	"directories": [],
+	"prompts": [],
+	"actions": {}
+}

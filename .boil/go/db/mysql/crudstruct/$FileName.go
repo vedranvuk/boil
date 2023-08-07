@@ -2,11 +2,11 @@
 
 package {{.Vars.PackageName}}
 
-type {{.Vars.RepoName}} struct {
+import (
+	"database/sql"
+	_ "github.com/go-sql-driver/mysql"
+)
 
-}
-
-func (self {{.Vars.RepoName}}) Create(item {{.Vars.TypeName}}) error {
+func Create(in {{declaration .Vars.TypeName | .Name}}) error {
 	return nil
 }
-

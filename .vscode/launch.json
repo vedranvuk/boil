@@ -47,6 +47,34 @@
 				"-o",
 				"${workspaceFolder}/cmd/boil"
 			]
+		},
+		{
+			"name": "boil: example: stringer",
+			"type": "go",
+			"request": "launch",
+			"mode": "auto",
+			"console": "integratedTerminal",
+			"internalConsoleOptions": "neverOpen",
+			"program": "${workspaceFolder}/cmd/boil",
+			"cwd": "${workspaceFolder}",
+			"args": [
+				"-v",
+				"-r",
+				"${workspaceFolder}/.boil",
+				"exec",
+				"go/utils/stringer",
+				"-w",
+				"-g",
+				"${workspaceFolder}/_testdata/input/stringer/input.go",
+				"-r",
+				"FileName=$TypeName_stringer",
+				"-r",
+				"PackageName=stringer",
+				"-r",
+				"TypeName=AnEnum",
+				"-o",
+				"${workspaceFolder}/_testdata/output/stringer"
+			]
 		}
 	]
 }

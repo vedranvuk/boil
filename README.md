@@ -34,6 +34,10 @@ template structure.
 
 Up to date help is in the tool itself and reachable via `boil help`.
 
+## Installation
+
+To install boil type `go install github.com/vedranvuk`.
+
 ## License
 
 MIT
