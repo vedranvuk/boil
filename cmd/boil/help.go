@@ -25,23 +25,33 @@ var helpTopics = HelpTopics{
 		Print:       printOverview,
 	},
 	{
-		Topic:       "templatepath",
-		Description: "About template paths.",
-		Print:       printTemplatePath,
-	},
-	{
-		Topic:       "repository",
+		Topic:       "repo",
 		Description: "About repositories.",
 		Print:       printRepository,
 	},
 	{
+		Topic:       "metafile",
+		Description: "Boil metafile reference.",
+		Print:       printMetafile,
+	},
+	{
+		Topic:       "bast",
+		Description: "Bast reference.",
+		Print:       printBast,
+	},
+	{
+		Topic:       "new",
+		Description: "'new' command usage.",
+		Print:       printEdit,
+	},
+	{
 		Topic:       "edit",
-		Description: "Edit command usage.",
+		Description: "'edit' command usage.",
 		Print:       printEdit,
 	},
 	{
 		Topic:       "exec",
-		Description: "Exec command usage.",
+		Description: "'exec' command usage.",
 		Print:       printExec,
 	},
 }
@@ -111,9 +121,8 @@ func (self HelpTopics) Print(topic string) {
 
 const helpText = `Help command
 
-
-The help command provides extended help about a command.
-To get help about a specific command type 'boil help <command>'.
+The help command provides help on some topic or extended help about a command.
+To get help about a specific command or topic type 'boil help <command|topic>'.
 `
 
 func printHelp() {
@@ -130,77 +139,44 @@ Templates which can then be used to create project boilerplates or smaller
 fragments of a project. The standard text/template package is used to enable 
 parametrization of input files.
 
-Data available to a template file can come from a variety of sources such as
-standard input, command line arguments, AST of some input Go file or package or
-various input files like json, yaml, xml, plain text files, etc.
-
-Templates are created in Repositories which reside on disk in some directory
-structured with a layout that Boil recognizes and maintains. Such Repositories
-can be easily versioned with git and specified as overrides on the command line
-when working with boil.
-
-Templates are addressed by path inside the Repository, i.e.: 'apps/webapp' or 
-by using an absolute path to a Template directory, i.e.: '/home/templates/app'.
-
-
 Template
 
-A Template is a collection of parametrized files and directories packaged in a 
-directory structure which is reflected in the output directory when executed.
+A Template is a collection of parametrized files and directories packaged into 
+a directory structure which is reflected in the output directory when executed.
 
-A Template directory is identified by containing a 'boil.json' Metafile which 
-defines the Template.
+File names of template files and directories can be parametrized using a simple
+text substitution and content of template files is parametrized using
+'text/template' package.
 
-Metafile
+New templates are stored in a repository and boil maintains a default repository
+in its configuration directory. A Template directory is identified by containing
+a 'boil.json' Metafile which defines the Template. For more info on metafiles 
+type 'boil help metafile'.
 
-A Metafile defines metadata about the author, version and contact details and
-the list of files and directories comprising the Template which are to be 
-executed into target directory.
+Data available to a template file can come from a variety of sources such as
+standard input, command line arguments, AST of some input Go file or package 
+(TODO: or various input files like json, yaml, xml, plain text files), etc.
 
-	// Metadata represents a Template Metafile.
-	type Metadata struct {
-		Name        string   // Template name.
-		Description string   // Description.
-		Author      *Author  // Template Author information.
-		Version     string   // Template version.
-		URL         string   // URL is the cannonical template URL.
-		Files       []string // List of Template files.
-		Directories []string // List of Template directories.
-		Multis      []*Multi // Multi definition.
-		Actions     struct {
-			Pre  []*Command // Pre-execution commands.
-			Post []*Command // Post execution commands.
-		} // Custom actions to execute with Template.
-	}
+For more info on data available to a template file see:
 
-	// Multi defines a a Multi Template.
-	type Multi struct {
-		Name        string   // Name is the Multi.
-		Description string   // Description.
-		Templates   []string // Templates to execute as part of Multi.
-	}
+  'boil help exec' for info on how to access data from a template file.
+  'boil help bast' for bast go parser reference.
 
-	// Author defines an author.
-	type Author struct {
-		Name 		string 	// Name is the author name in an arbitrary format.
-		Email 		string 	// Email is the author Email address.
-		Homepage 	string 	// Homepage is the author's homepage URL.
-	}
+Repository
 
-	// Command defines a command to execute
-	type Command struct {
-		Name 		string 		// Name is the Command name.
-		Program 	string 		// Program path to executable.
-		Arguments 	[]string 	// Program arguments.
-	}
+Templates are created in Repositories which reside on disk in some directory.
+Organization of templates in a repository is completely up to the user except
+that template directories that contain one or more templates in any of their 
+subdirectories can define groups which can execute one or more of those child 
+templates as part of the parent template.
 
-`
+Templates are addressed by path inside the Repository, i.e.: 'apps/webapp' or 
+by using an absolute path to a Template directory, i.e.: '/home/templates/app'
+in which case repository is ignore and the template loaded directly from the
+specified directory.
 
-func printOverview() {
-	fmt.Print(overviewText)
-}
+Template paths
 
-const templatePathText = `
 A template path is a simple relative path that addresses a template directory
 inside a repository. This format is used by all except the exec command.
 
@@ -220,87 +196,82 @@ An absolute path to a template:
 An absolute path to a template that addresses a group defined in the template:
 
   /home/user/templates/apptemplate#all
+
+For more info on template paths and groups see 'boil help repository'.
 `
 
-func printTemplatePath() {
-	fmt.Print(templatePathText)
+func printOverview() {
+	fmt.Print(overviewText)
 }
 
 const repositoryText = `
 Repository
 
 A Repository is any directory that contains Templates, possibly organized in a
-manner customized by the user. Take for example a simple Repository structure:
+manner customized by the user. 
 
-/repository
-	/apps
-   		/cliapp
-			/cmd
-				/app
-					main.go
-			boil.json
-   		/webapp<w
-			/cmd
-				/app
-					main.go
-			boil.json
-	/multis
-		/segmented
-			/docs
-				manual.md
-			/base
-				/cmd
-					/app
-						main.go
-				boil.json
-			/config
-				/internal
-					config.go
-				boil.json
-			/webui
-				/internal
-					webui.go
-				boil.json
-			/api
-				/internal
-					api.go
-				boil.json
-			boil.json
-			README.md
+The simplest example is a repository containing a single template named 'foo' 
+defined by its boil.json file and containing a single file in a subdirectory: 
+
+  /repository
+    /foo
+      /cmd
+        main.go
+      boil.json
+
+The 'foo' template would in this case be addressed with 'foo'.
+
+User may categorize templates when defining them by organizing them into 
+subdirectories by prepending the template name with some path prefix which will 
+be reflected in the repository. For example a template 'go/foo' would be stored
+in the repository as:
+
+  /repository
+    /go
+      /foo
+        /cmd
+          main.go
+        boil.json
+
+A template may contain one or more other templates in its subdirectories and if
+it does it may contain one or more group definitions which specify which of the
+child templates will get executed as part of the parent template. Take for 
+instance the following repository:
+
+  /repository
+    /foo
+      /cmd
+        main.go
+      /config
+        /cmd
+          config.go
+        boil.json
+      /webui
+        /cmd
+          webui.go
+        boil.json
+      boil.json
 	
-In this example 'repository' is the root of some Repository directory. It
-contains two directories 'apps' and 'multis' which have no metadata and serve 
-only to categorize Templates by some arbitrary hierarchy defined by user.
+In this example repository contains a single template named 'foo' which has two 
+child templates named 'config' and 'webui'. The parent 'foo' template can then 
+define one or more groups, each of which can reference various child template
+combinations whose files will be executed along with the parent template files
+to the same output directory specified to the exec command.
 
-Inside the 'apps' directory are two subdirectories 'cliapp' and 'webapp' with 
-their Metadata files, so those two directories each define a single Template.
-All subdirectories and files of a Template that are listed in the Metafile
-will be executed in the target directory retaining directory structure.
+A group is referenced by appending '#' to a template path immediately followed 
+by the name of the group, e.g. 'foo#all'.
 
-To execute for instance the 'webapp' template one would need to qualify it 
-by path, e.g.: 'apps/webapp'
+Say the 'foo' template metafile '/foo/boil.json' defines two groups: a 'config' 
+group which references only the config 'child' template and an 'all' group which
+references the "config' and 'webui' templates.
 
-In the 'multis' directory there is a Multi Template named 'segmented' defined
-by its Metafile. It may define a list of its files and subdirectories to be 
-executed with the Multi, in this case directory 'docs', and the files in the 
-'docs' and the 'README.md' as well as any number of combinations of Templates
-defined in its subdirectories ('base', 'config', 'webui', 'api').
+Executing 'foo#config' would along with the 'foo' template files also execute
+the files of 'config' template in the same output directory and executing
+'foo#all' would execute files contained by the 'webui' template as well.
 
-The name of Template in a Template path (last element) can then be substituted
-for the name of a Multi defined in the Metafile of a Template, e.g.:
-
-'multis/segmented/base_with_api' - for instance, files in 'segmented' and the 
-'base' and 'api' templates all executed as a single Template...
-
-'multis/segmented/complete' - ...or all files and subdirectories in 'segmented' 
-along with all Templates defined in subdirectories of 'segmented'.
-
-The Templates defined inside a Multi can also be addressed directly, e.g.
-'multis/segmented/base' and executed into some target directory separately.
-
-Executing a template by name that contains Multi definitions,  e.g.: 
-'multis/segmented' will only execute files and directories defined in 
-the 'segmented' Metafile but not any of the Templates defined in subdirectories.
+Templates referenced by the group are executed after the parent template files
+and in the order as they are defined in the metafile.
+ 
 `
 
 func printRepository() {
@@ -327,23 +298,67 @@ func printEdit() {
 const execText = `
 Usage: boil exec <template-path> [options]
 
-The exec command executes a template by copying irs files and directories to the
-output directory. It replaces placeholder variables in source template file 
-names
+The exec command executes a template by copying its files and directories to the
+output directory retaining directory structure. It replaces variable 
+placeholders in source template file names in the process and passes data 
+defined on the command line or some other input to each template file as it is 
+executed to its output location.
 
-replacing placeholder 
-variables in the process and executing a template using values provided on 
-command line or extracted from a go file.
+Exec command executes each entry in the order as defined for each set of actions
+defined in the template metafile at following stages of exec command:
 
-If a variable declared in a prompt is specified on command line the prompt for 
-it - if prompting is enabled - will not be presented to the user.
+ PreParse: Before variable parsing or any template file enumeration. May be used
+           for some external setup or similar.
 
-Following variables may override exec command option values:
+ PreExec:  Just before template file executions, after all variables have been 
+           loaded. Useful for some external input generation or similar.
 
-OutputDirectory output-dir
+ PostExec: After template file executions, useful for cleanup of anything 
+           generated using earlier actions.
+
+Any prompts defined in the template will be presented to the user to enter
+values for variables they define via stdin dialogs unless '--no-prompt' is given
+in command line arguments.
+
+If a variable defined by a template prompt is defined on the command line using 
+the 'var' option the prompt for it will not be presented to the user.
+
+If '--no-prompts' is specified in command line arguments no prompts defined in 
+the template will be presented to the user but if a variable defined by a prompt
+is not oterwise given using the 'var' exec option the exec command will fail.
+
+Variables defined using the 'var' option can (currently) also override values 
+of exec option values, and take precedence over values given in options 
+themselves. The mapping is as follows: 
+
+  OutputDirectory  output-dir
 `
 
 func printExec() {
 	cmdline.PrintCommand(os.Stdout, cmdlineConfig, cmdlineConfig.Commands.Find("exec"), 0)
 	fmt.Print(execText)
 }
+
+const bastText = `Bast
+
+(B)astard (AST) defines a simple object model from standard Go AST which allows
+easier access to an input go file syntax tree and is designed to be used from 
+within a template file being executed using 'text/template'.
+
+Currently, it parses only top level interface and struct declarations from each 
+input file.
+
+It is accessible from {{.Bast}} pipeline from inside a template file or via 
+template functions.
+
+TODO: Complete BAST object reference when complete.
+`
+
+func printBast() { fmt.Print(bastText) }
+
+const metafileText = `Metafile
+
+TODO: Metafile help.
+`
+
+func printMetafile() { fmt.Print(metafileText) }

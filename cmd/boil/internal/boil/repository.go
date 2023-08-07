@@ -21,9 +21,8 @@ type Repository interface {
 	// Repository backend.
 	Location() string
 
-	// LoadMetamap loads metadata from root
-	// walking all child subdirectories and returns it or returns a descriptive
-	// error if one occurs.
+	// LoadMetamap loads metadata from repository walking all child 
+	// subdirectories and returns it or returns a descriptive error.
 	//
 	// The resulting Metamap will contain a *Metadata for each subdirectory at
 	// any level in the Repository that contains a Metafile, i.e. defines a
@@ -31,6 +30,11 @@ type Repository interface {
 	//
 	// If the root of the Repository contains Metafile i.e. is a Template
 	// itself an entry for it will be set under current directory dot ".".
+	// 
+	// Any groups defined in a template will be added under the same path as the
+	// template that defines them but with a group name suffix prefixed with a
+	// "#". For example if a template 'go/app' defines a 'config' group it would
+	// be addressed as 'go/app#config'.
 	LoadMetamap() (Metamap, error)
 	// HasMeta returns true if path contains a metafile or an error.
 	HasMeta(path string) (bool, error)
