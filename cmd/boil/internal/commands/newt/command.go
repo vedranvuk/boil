@@ -7,6 +7,8 @@ package newt
 
 import (
 	"fmt"
+	"path/filepath"
+	"strings"
 
 	"github.com/vedranvuk/boil/cmd/boil/internal/boil"
 )
@@ -39,6 +41,7 @@ func Run(config *Config) (err error) {
 	}
 
 	meta = boil.NewMetafile(config.Config)
+	meta.Name, _, _ = strings.Cut(filepath.Base(config.TemplatePath), "#")
 	meta.Path = config.TemplatePath
 	if err = boil.NewEditor(config.Config, meta).Wizard(); err != nil {
 		return fmt.Errorf("execute wizard: %w", err)
@@ -47,7 +50,6 @@ func Run(config *Config) (err error) {
 		return
 	}
 
-	// TODO: Variables
 	vars.AddNew(boil.Variables{
 		"TemplatePath": config.TemplatePath,
 	})
@@ -57,5 +59,4 @@ func Run(config *Config) (err error) {
 	}
 
 	return nil
-
 }

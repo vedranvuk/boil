@@ -162,6 +162,10 @@ func Run(config *Config) (err error) {
 	if state.Data.Bast, err = bast.Load(config.GoInputs...); err != nil {
 		return fmt.Errorf("process go input files: %w", err)
 	}
+	if config.ShouldPrint() {
+		fmt.Println("Go input:")
+		state.Data.Bast.Print(os.Stdout)
+	}
 
 	// Expand variable placeholders in paths.
 	if err = state.Templates.DetermineTemplateTargets(state); err != nil {
@@ -180,11 +184,16 @@ func Run(config *Config) (err error) {
 	if config.ShouldPrint() {
 		fmt.Printf("Repository location: %s\n", state.Repository.Location())
 		state.Templates.Print()
+		fmt.Println("Templates:")
+		for _, m := range state.Templates {
+			fmt.Printf("Template %s\n", m.Metafile.Path)
+			m.Metafile.Print()
+		}
 	}
 	if err = state.Templates.ExecPreExecuteActions(state.Data.Vars); err != nil {
 		return fmt.Errorf("pre execute action failed: %w", err)
 	}
-	if err = state.Templates.Execute(state); err != nil {
+	if err = state.Templates.Execute(state, config.ShouldPrint()); err != nil {
 		return
 	}
 	if err = state.Templates.ExecPostExecuteActions(state.Data.Vars); err != nil {

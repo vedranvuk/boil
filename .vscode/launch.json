@@ -30,6 +30,7 @@
 			"program": "${workspaceFolder}/cmd/boil",
 			"cwd": "${workspaceFolder}",
 			"args": [
+				"-v",
 				"-r",
 				"${workspaceFolder}/.boil",
 				"exec",

@@ -5,30 +5,14 @@ package testgoinputs
 
 import "strings"
 
-type MyInterface interface {
-	MyMethod(input string) (output string)
+// Foo defines an interface to foo.
+type Foo interface {
+	// Bar is a method in Foo.
+	Bar(input string) (output string)
 }
 
-type MyStruct struct {
-	Name string
-	Age  int
+// Reee defines a struct.
+type Reee struct {
+	// Tarded is a string field in Reee, with a tag.
+	Tarded string `json:"-" db:"tarded"`
 }
-
-type (
-	MyStruct2 struct {
-		Name string
-	}
-	MyStruct3 struct {
-		Name string
-		Sub  struct {
-			Surname string
-		}
-	}
-)
-
-func TestFunc(in string) (out stirng) { return strings.ToLower(in) }
-
-type TestStruct struct{}
-
-func (self TestStruct) Method() {}
-func (self *TestStruct) PointerMethod() {}

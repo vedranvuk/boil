@@ -231,7 +231,7 @@ func (self Templates) ExecPostExecuteActions(variables boil.Variables) (err erro
 }
 
 // Execute executes all defined executions or returns an error.
-func (self Templates) Execute(state *state) (err error) {
+func (self Templates) Execute(state *state, print bool) (err error) {
 
 	if state.MakeBackups {
 		var id string
@@ -265,14 +265,18 @@ func (self Templates) Execute(state *state) (err error) {
 			}
 			var (
 				buf  []byte
-				tmpl *template.Template
+				tmpl = template.New(filepath.Base(item.Source)).Funcs(state.Data.Bast.FuncMap())
 				file *os.File
 			)
 			if buf, err = state.Repository.ReadFile(item.Source); err != nil {
 				return fmt.Errorf("read template file '%s': %w", item.Source, err)
 			}
-			if tmpl, err = template.New(filepath.Base(item.Source)).Parse(string(buf)); err != nil {
-				return fmt.Errorf("parse template file '%s': %w", item.Source, err)
+			if tmpl, err = tmpl.Parse(string(buf)); err != nil {
+				return fmt.Errorf("parse template file: %w", err)
+			}
+			if print {
+				fmt.Printf("Template %s\n", tmpl.Name())
+				boil.PrintTemplate(tmpl)
 			}
 			if err = os.MkdirAll(filepath.Dir(item.Target), os.ModePerm); err != nil {
 				return fmt.Errorf("create target file dir '%s': %w", filepath.Dir(item.Target), err)
@@ -292,15 +296,12 @@ func (self Templates) Execute(state *state) (err error) {
 // Print prints self to stdout.
 func (self Templates) Print() {
 	var wr = tabwriter.NewWriter(os.Stdout, 2, 2, 2, 32, 0)
-	fmt.Println()
 	fmt.Println("Executions:")
-	fmt.Println()
 	for _, exec := range self {
 		fmt.Fprintf(wr, "[Template]\t[Source]\t[Target]\n")
 		for _, def := range exec.List {
 			fmt.Fprintf(wr, "%s\t%s\t%s\n", exec.Metafile.Path, def.Source, def.Target)
 		}
 	}
-	fmt.Fprintf(wr, "\n")
 	wr.Flush()
 }
