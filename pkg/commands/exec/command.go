@@ -52,6 +52,11 @@ type Config struct {
 	// the command line.
 	NoPrompts bool
 
+	// NoRepository if true does not use a repository when interpreting template
+	// paths. Relative paths will be treated as relative to current working
+	// directory.
+	NoRepository bool
+
 	// EditAfterExec if true opens the output with the editor.
 	EditAfterExec bool
 
@@ -77,7 +82,31 @@ func (self *Config) GetRepositoryPath() string {
 	return self.Config.GetRepositoryPath()
 }
 
-// state is the Exec command state.
+// templateData is the top level data structure passed to a template file being 
+// executed using text/template engine before being saved to its output.
+type templateData struct {
+	// Vars contain variables defined via prompts or command line, command
+	// specific variables and system variables.
+	Vars boil.Variables
+	// Bast is the bastard go ast.
+	Bast *bast.Bast
+}
+
+// newTemplateData returns a new *templateData instance.
+func newTemplateData() *templateData {
+	return &templateData{
+		Vars: make(boil.Variables),
+	}
+}
+
+// ReplaceAll replaces all known variable placeholders in input string with
+// actual values and returns it.
+func (self *templateData) ReplaceAll(in string) (out string) {
+	return self.Vars.ReplacePlaceholders(in)
+}
+
+// state maintains exec command execution.
+// It's passed around the files in this package.
 type state struct {
 	RepositoryPath string
 	// TemplatePath is the adjusted path to the template usable by Repository.
@@ -87,11 +116,11 @@ type state struct {
 	// Repository is the loaded Repository.
 	Repository boil.Repository
 	// Data for Template files, combined from various inputs.
-	Data *Data
+	Data *templateData
 	// MakeBackup dictates if backups should be made on execution.
 	MakeBackups bool
 	// Templates are the Templates to execute.
-	Templates Templates
+	Templates Tasks
 }
 
 // Run executes the Exec command configured by config.
@@ -102,16 +131,17 @@ func Run(config *Config) (err error) {
 		fmt.Printf("NoExecute enabled, printing commands instead of executing.\n")
 	}
 
+	// Init state to Config values.
 	var state = &state{
 		RepositoryPath: config.GetRepositoryPath(),
 		TemplatePath:   config.TemplatePath,
 		OutputDir:      config.OutputDir,
 		MakeBackups:    config.Config.ShouldBackup(),
-		Data:           NewData(),
+		Data:           newTemplateData(),
 	}
 
-	// Parse template path and putput dir
-	if filepath.IsAbs(config.TemplatePath) {
+	// Determine Input and Output locations.
+	if filepath.IsAbs(config.TemplatePath) || config.NoRepository {
 		// If TemplatePath is an absolute path open the Template as the
 		// Repository and adjust the template path to "current directory"
 		// pointing to repository root.
@@ -130,21 +160,26 @@ func Run(config *Config) (err error) {
 		return fmt.Errorf("get absolute target path: %w", err)
 	}
 
-	// Open repo, get a list of templates to execute, run pre-parse actions.
 	if state.Repository, err = boil.OpenRepository(state.RepositoryPath); err != nil {
 		return fmt.Errorf("open repository: %w", err)
 	}
-	if state.Templates, err = GetSourceTemplates(state); err != nil {
+
+	// Create a Template list, it will contain only the source paths of all
+	// referenced template file paths over all referenced templates in a
+	// possible group. Outputs are determined later after all variables have
+	// been loaded.
+	if state.Templates, err = templatesFromState(state); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("not a boil template: %s", config.TemplatePath)
 		}
 		return fmt.Errorf("enumerate template files for execution: %w", err)
 	}
+
 	if err = state.Templates.ExecPreParseActions(); err != nil {
 		return fmt.Errorf("pre parse action failed: %w", err)
 	}
 
-	// Add vars declared on command line to state vars.
+	// Add vars declared on command line.
 	state.Data.Vars.AddNew(config.Vars)
 	// Show prompts for variables not satisified early on command line.
 	if !config.NoPrompts {
@@ -158,6 +193,7 @@ func Run(config *Config) (err error) {
 	state.Data.Vars.AddNew(boil.Variables{
 		boil.VarTemplatePath.String(): state.TemplatePath,
 	})
+
 	// Load bast.
 	if state.Data.Bast, err = bast.Load(config.GoInputs...); err != nil {
 		return fmt.Errorf("process go input files: %w", err)
@@ -167,11 +203,13 @@ func Run(config *Config) (err error) {
 		state.Data.Bast.Print(os.Stdout)
 	}
 
-	// Expand variable placeholders in paths.
-	if err = state.Templates.DetermineTemplateTargets(state); err != nil {
+	// Now that the vars have been loaded expand variable placeholders in
+	// template paths.
+	if err = state.Templates.SetTargetsFromState(state); err != nil {
 		return fmt.Errorf("expand target file names: %w", err)
 	}
-	// Validate templates, check for conflicts.
+
+	// Validate templates and optionally check for output conflicts.
 	if err = state.Templates.Validate(state); err != nil {
 		return fmt.Errorf("validation failed: %w", err)
 	}
@@ -180,7 +218,8 @@ func Run(config *Config) (err error) {
 			return err
 		}
 	}
-	// Print, run pre actions, exec template files, post actions and edit.
+
+	// Optional verbose output.
 	if config.ShouldPrint() {
 		fmt.Printf("Repository location: %s\n", state.Repository.Location())
 		state.Templates.Print()
@@ -191,6 +230,9 @@ func Run(config *Config) (err error) {
 		}
 		state.Data.Vars.Print()
 	}
+
+	// Exec Pre actions, templates then Post actions. Optionally open output
+	// directory in external editor.
 	if err = state.Templates.ExecPreExecuteActions(state.Data.Vars); err != nil {
 		return fmt.Errorf("pre execute action failed: %w", err)
 	}
@@ -205,5 +247,75 @@ func Run(config *Config) (err error) {
 			return
 		}
 	}
+
+	return nil
+}
+
+// templatesFromState returns Templates to be executed from a state. It
+// returns empty Templates and an error if the state is invalid, one or more
+// template files is missing, any group addresses a missing template or some
+// other error.
+func templatesFromState(state *state) (templates Tasks, err error) {
+	err = produceTemplates(state, state.TemplatePath, &templates)
+	return
+}
+
+// produceTemplates uses state to recursively construct execs starting
+// from path. if the function failes it returns an error.
+func produceTemplates(state *state, path string, out *Tasks) (err error) {
+
+	var (
+		meta   *boil.Metafile
+		group  string
+		exists bool
+	)
+
+	path, group, _ = strings.Cut(path, "#")
+
+	if meta, err = state.Repository.OpenMeta(path); err != nil {
+		return err
+	}
+
+	var template = &Task{
+		Metafile: meta,
+	}
+
+	for _, dir := range meta.Directories {
+		template.List = append(template.List, &Execute{
+			Path:   dir,
+			Source: filepath.Join(path, dir),
+			IsDir:  true,
+		})
+	}
+
+	for _, file := range meta.Files {
+		if exists, err = state.Repository.Exists(filepath.Join(path, file)); err != nil {
+			return err
+		}
+		if !exists {
+			return fmt.Errorf("template file '%s' does not exist", filepath.Join(path, file))
+		}
+		template.List = append(template.List, &Execute{
+			Path:   file,
+			Source: filepath.Join(path, file),
+			IsDir:  false,
+		})
+	}
+
+	*out = append(*out, template)
+
+	if group != "" {
+		for _, g := range meta.Groups {
+			if g.Name == group {
+				continue
+			}
+			for _, name := range g.Templates {
+				if err = produceTemplates(state, filepath.Join(path, name), out); err != nil {
+					return
+				}
+			}
+		}
+	}
+
 	return nil
 }

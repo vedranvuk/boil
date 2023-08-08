@@ -32,11 +32,11 @@ func (self *Editor) Wizard() (err error) {
 
 	var truth bool
 
-	self.Printf("New template wizard\n\n")
+	self.Printf("New Template Wizard\n\n")
 	if err = self.EditInfo(); err != nil {
 		return
 	}
-	self.Printf("Would you like to define some Prompts?\n")
+	self.Printf("Define a new prompt?\n")
 	if truth, err = self.AskYesNo(false); err != nil {
 		return err
 	} else if truth {
@@ -44,7 +44,7 @@ func (self *Editor) Wizard() (err error) {
 			return
 		}
 	}
-	self.Printf("Would you like to define some Pre-Parse actions?\n")
+	self.Printf("Define a new Pre-Parse action?\n")
 	if truth, err = self.AskYesNo(false); err != nil {
 		return err
 	} else if truth {
@@ -52,7 +52,7 @@ func (self *Editor) Wizard() (err error) {
 			return
 		}
 	}
-	self.Printf("Would you like to define some Pre-Execute actions?\n")
+	self.Printf("Define a new Pre-Execute action?\n")
 	if truth, err = self.AskYesNo(false); err != nil {
 		return err
 	} else if truth {
@@ -60,7 +60,7 @@ func (self *Editor) Wizard() (err error) {
 			return
 		}
 	}
-	self.Printf("Would you like to define some Post-Execute actions?\n")
+	self.Printf("Define a new Post-Execute action?\n")
 	if truth, err = self.AskYesNo(false); err != nil {
 		return err
 	} else if truth {
@@ -80,7 +80,7 @@ func (self *Editor) definePrompts() (result []*Prompt, err error) {
 	)
 
 	for {
-		self.Printf("New Prompt:\n")
+		self.Printf("New Prompt\n")
 		prompt = new(Prompt)
 
 		if prompt.Variable, err = self.AskValue("Variable", "", ".*"); err != nil {
@@ -101,7 +101,7 @@ func (self *Editor) definePrompts() (result []*Prompt, err error) {
 		}
 		result = append(result, prompt)
 
-		self.Printf("Would you like to define another Prompt?\n")
+		self.Printf("Define another Prompt?\n")
 		if truth, err = self.AskYesNo(false); err != nil {
 			return
 		} else if truth {
@@ -126,7 +126,7 @@ func (self *Editor) defineActions(actions *Actions) (err error) {
 		}
 		*actions = append(*actions, action)
 
-		self.Printf("Would you like to define another Action?\n")
+		self.Printf("Define another Action?\n")
 		if truth, err = self.AskYesNo(false); err != nil {
 			return err
 		} else if truth {
@@ -142,7 +142,7 @@ func (self *Editor) defineAction() (action *Action, err error) {
 
 	var truth bool
 	action = new(Action)
-	self.Printf("New Action:\n")
+	self.Printf("New Action\n")
 
 	if action.Description, err = self.AskValue("Description", "", ".*"); err != nil {
 		return
@@ -154,12 +154,12 @@ func (self *Editor) defineAction() (action *Action, err error) {
 		return
 	}
 
-	self.Printf("Arguments:\n")
+	self.Printf("Arguments\n")
 	if action.Arguments, err = self.AskList(); err != nil {
 		return
 	}
 
-	self.Printf("Would you like to define some environment variables?\n")
+	self.Printf("Define an environment variable?\n")
 	if truth, err = self.AskYesNo(false); err != nil {
 		return
 	} else if truth {
@@ -168,7 +168,7 @@ func (self *Editor) defineAction() (action *Action, err error) {
 		}
 	}
 
-	self.Printf("Don't break the execution if action fails:\n")
+	self.Printf("Don't break execution if action fails?\n")
 	if truth, err = self.AskYesNo(false); err != nil {
 		return
 	} else if truth {
@@ -184,7 +184,7 @@ func (self *Editor) defineEnvVariables() (result map[string]string, err error) {
 	result = make(map[string]string)
 	var truth bool
 
-	self.Printf("Environment variables (Enter empty Name to abort):\n")
+	self.Printf("Environment Variables (Enter empty Name to abort)\n")
 	for {
 		if key, val, err = self.AskVariable(); err != nil {
 			return
@@ -194,7 +194,7 @@ func (self *Editor) defineEnvVariables() (result map[string]string, err error) {
 		}
 		result[key] = val
 
-		self.Printf("Would you like to define another environment variable?\n")
+		self.Printf("Define another environment variable?\n")
 		if truth, err = self.AskYesNo(false); err != nil {
 			return
 		} else if truth {

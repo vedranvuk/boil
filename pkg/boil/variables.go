@@ -7,6 +7,7 @@ package boil
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 )
@@ -87,7 +88,35 @@ func (self Variables) AddNew(variables Variables) Variables {
 	return self
 }
 
-func (self Variables) Print()  {
+// AddAssignments adds assignments to self overwriting any existing entries 
+// where an assignment is a string in a "key=value" format. 
+//
+// It parses key to Variable key and value to its value. Value is unquoted 
+// before being set under a key. If an entry that is not in such format
+// is found in assignments an error is returned that describes the offending
+// entry and no variables are added to self or in case of any other error.
+func (self Variables) AddAssignments(assignments ...string) (err error) {
+	var (
+		temp     = make(Variables)
+		key, val string
+		valid    bool
+	)
+	for _, assignment := range assignments {
+		if key, val, valid = strings.Cut(assignment, "="); !valid {
+			return fmt.Errorf("invalid variable format %s", assignments)
+		}
+		if val, err = strconv.Unquote(val); err != nil {
+			return fmt.Errorf("unquote var value: %w", err)
+		}
+		temp[key] = val
+	}
+	for k, v := range temp {
+		self[k] = v
+	}
+	return
+}
+
+func (self Variables) Print() {
 	if len(self) == 0 {
 		return
 	}

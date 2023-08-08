@@ -9,15 +9,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
+	"github.com/vedranvuk/boil/pkg/boil"
 	"github.com/vedranvuk/boil/pkg/commands/edit"
 	"github.com/vedranvuk/boil/pkg/commands/exec"
 	"github.com/vedranvuk/boil/pkg/commands/info"
 	"github.com/vedranvuk/boil/pkg/commands/list"
 	"github.com/vedranvuk/boil/pkg/commands/newt"
 	"github.com/vedranvuk/boil/pkg/commands/snap"
-	"github.com/vedranvuk/boil/pkg/boil"
 	"github.com/vedranvuk/cmdline"
 )
 
@@ -32,7 +31,8 @@ var (
 
 func main() {
 
-	// Configuration defaults, later updated from file by the executed command.
+	// Init boil config defaults. Overwritten from file in globals handler 
+	// after config related flags have been parsed.
 	if programConfig, err = boil.DefaultConfig(); err != nil {
 		fmt.Fprintf(os.Stderr, "init config: %s\n", err.Error())
 		os.Exit(1)
@@ -57,6 +57,11 @@ func main() {
 			&cmdline.Boolean{
 				LongName: "version",
 				Help:     "Show program version and exit.",
+			},
+			&cmdline.Boolean{
+				LongName: "no-repository",
+				ShortName: "n",
+				Help: "Do not use a repository, interpret template paths as relative to cwd.",
 			},
 			&cmdline.Optional{
 				LongName:    "config",
@@ -370,17 +375,12 @@ func main() {
 						Help:      "Input Go file or package.",
 					},
 				},
-				Handler: func(c cmdline.Context) error {
-					// Create a map of UserVariables.
+				Handler: func(c cmdline.Context) (err error) {
+					// Create Variables from var options.
 					var vars = make(boil.Variables)
-					for _, v := range c.RawValues("var") {
-						var a = strings.Split(v, "=")
-						if len(a) != 2 {
-							return errors.New("variable must be in 'key=value' format")
-						}
-						vars[a[0]] = a[1]
+					if err = vars.AddAssignments(c.RawValues("var")...); err != nil {
+						return
 					}
-
 					// Execute Exec Command.
 					return exec.Run(&exec.Config{
 						TemplatePath:  c.RawValues("template-path").First(),
