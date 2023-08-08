@@ -7,10 +7,10 @@ package exec
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
-	"text/tabwriter"
 	"text/template"
 
 	"github.com/vedranvuk/boil/pkg/boil"
@@ -29,8 +29,7 @@ type Task struct {
 
 // Execute defines an execution action as part of a exec command task.
 type Execute struct {
-	// Path is the path of the template file or directory.
-	// It is relative to repository root and output directory root.
+	// Path is the path to the template directory relative to repository root.
 	Path string
 	// Source is path of the template file or dir relative to repo root.
 	Source string
@@ -136,6 +135,9 @@ func (self Tasks) Validate(state *state) (err error) {
 // any action is returned and execution stopped or nil if everything successed.
 func (self Tasks) ExecPreParseActions() (err error) {
 	for _, template := range self {
+		if template.Metafile == nil {
+			continue
+		}
 		if err = template.Metafile.ExecPreParseActions(); err != nil {
 			return
 		}
@@ -149,6 +151,9 @@ func (self Tasks) ExecPreParseActions() (err error) {
 // successed.
 func (self Tasks) ExecPreExecuteActions(variables boil.Variables) (err error) {
 	for _, template := range self {
+		if template.Metafile == nil {
+			continue
+		}
 		if err = template.Metafile.ExecPreExecuteActions(variables); err != nil {
 			return
 		}
@@ -162,6 +167,9 @@ func (self Tasks) ExecPreExecuteActions(variables boil.Variables) (err error) {
 // successed.
 func (self Tasks) ExecPostExecuteActions(variables boil.Variables) (err error) {
 	for _, template := range self {
+		if template.Metafile == nil {
+			continue
+		}
 		if err = template.Metafile.ExecPostExecuteActions(variables); err != nil {
 			return
 		}
@@ -233,14 +241,22 @@ func (self Tasks) Execute(state *state, print bool) (err error) {
 }
 
 // Print prints self to stdout.
-func (self Tasks) Print() {
-	var wr = tabwriter.NewWriter(os.Stdout, 2, 2, 2, 32, 0)
-	fmt.Println("Executions:")
-	for _, exec := range self {
-		fmt.Fprintf(wr, "[Template]\t[Source]\t[Target]\n")
-		for _, def := range exec.List {
-			fmt.Fprintf(wr, "%s\t%s\t%s\n", exec.Metafile.Path, def.Source, def.Target)
+func (self Tasks) Print(wr io.Writer) {
+	if len(self) == 0 {
+		return
+	}
+	fmt.Fprintf(wr, "Tasks:\n")
+	for _, task := range self {
+		if task.Metafile != nil {
+			fmt.Fprintf(wr, "[Template]\t[Source]\t[Target]\n")
+			for _, def := range task.List {
+				fmt.Fprintf(wr, "%s\t%s\t%s\n", task.Metafile.Path, def.Source, def.Target)
+			}
+			continue
+		}
+		fmt.Fprintf(wr, "[Source]\t[Target]\n")
+		for _, def := range task.List {
+			fmt.Fprintf(wr, "%s\t%s\n", def.Source, def.Target)
 		}
 	}
-	wr.Flush()
 }

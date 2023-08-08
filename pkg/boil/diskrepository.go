@@ -134,6 +134,18 @@ func (self *DiskRepository) Remove(path string) error {
 	return os.RemoveAll(filepath.Join(self.root, path))
 }
 
+func (self *DiskRepository) WalkDir(root string, f fs.WalkDirFunc) (err error) {
+	if root, err = filepath.Abs(filepath.Join(self.root, root)); err != nil {
+		return fmt.Errorf("abs repo root: %w", err)
+	}
+	return filepath.WalkDir(self.root, func(path string, d fs.DirEntry, err error) error {
+		if path, err = filepath.Rel(root, path); err != nil {
+			return fmt.Errorf("rel path to repo root: %w", err)
+		}
+		return f(path, d, err)
+	})
+}
+
 func readMeta(filename string) (meta *Metafile, err error) {
 	var data []byte
 	if data, err = os.ReadFile(filename); err != nil {

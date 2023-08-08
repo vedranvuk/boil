@@ -7,6 +7,7 @@ package list
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/vedranvuk/boil/pkg/boil"
@@ -25,9 +26,10 @@ type Config struct {
 func Run(config *Config) (err error) {
 
 	var (
-		repo boil.Repository
-		meta boil.Metamap
-		list = make(boil.Metamap)
+		repo    boil.Repository
+		meta    boil.Metamap
+		list    = make(boil.Metamap)
+		printer = boil.NewPrinter(os.Stdout)
 	)
 
 	if repo, err = boil.OpenRepository(config.Config.GetRepositoryPath()); err != nil {
@@ -43,12 +45,12 @@ func Run(config *Config) (err error) {
 		}
 	}
 	if config.Prefix != "" {
-		fmt.Printf("Templates found in current repository at %s:\n", config.Prefix)
+		printer.Printf("Templates found in current repository at %s:\n", config.Prefix)
 	} else {
-		fmt.Printf("Templates found in current repository:\n")
+		printer.Printf("Templates found in current repository:\n")
 	}
-	fmt.Println()
-	list.Print()
+	printer.Printf("\n")
+	list.Print(printer)
 
 	return nil
 }

@@ -31,7 +31,7 @@ var (
 
 func main() {
 
-	// Init boil config defaults. Overwritten from file in globals handler 
+	// Init boil config defaults. Overwritten from file in globals handler
 	// after config related flags have been parsed.
 	if programConfig, err = boil.DefaultConfig(); err != nil {
 		fmt.Fprintf(os.Stderr, "init config: %s\n", err.Error())
@@ -44,6 +44,10 @@ func main() {
 		NoIndexedFirst: true,
 		Globals: cmdline.Options{
 			&cmdline.Boolean{
+				LongName: "version",
+				Help:     "Show program version and exit.",
+			},
+			&cmdline.Boolean{
 				LongName:  "help",
 				ShortName: "h",
 				Help:      "Show help.",
@@ -55,13 +59,10 @@ func main() {
 				MappedValue: &programConfig.Overrides.Verbose,
 			},
 			&cmdline.Boolean{
-				LongName: "version",
-				Help:     "Show program version and exit.",
-			},
-			&cmdline.Boolean{
-				LongName: "no-repository",
-				ShortName: "n",
-				Help: "Do not use a repository, interpret template paths as relative to cwd.",
+				LongName:    "no-repository",
+				ShortName:   "n",
+				Help:        "Do not use a repository.",
+				MappedValue: &programConfig.Overrides.NoRepository,
 			},
 			&cmdline.Optional{
 				LongName:    "config",
@@ -81,6 +82,10 @@ func main() {
 				"verbose",
 				"version",
 				"help",
+			},
+			{
+				"repository",
+				"no-repository",
 			},
 		},
 		GlobalsHandler: func(c cmdline.Context) (err error) {
@@ -351,8 +356,13 @@ func main() {
 					},
 					&cmdline.Boolean{
 						LongName:  "no-prompts",
-						ShortName: "n",
+						ShortName: "p",
 						Help:      "Don't present input prompts for missing variables.",
+					},
+					&cmdline.Boolean{
+						LongName:  "no-metadata",
+						ShortName: "m",
+						Help:      "No metadata mode. Copy source template dir as is.",
 					},
 					&cmdline.Boolean{
 						LongName:  "edit",
@@ -386,8 +396,8 @@ func main() {
 						TemplatePath:  c.RawValues("template-path").First(),
 						OutputDir:     c.RawValues("output-dir").First(),
 						Overwrite:     c.IsParsed("overwrite"),
-						NoExecute:     c.IsParsed("no-execute"),
 						NoPrompts:     c.IsParsed("no-prompts"),
+						NoMetadata:    c.IsParsed("no-metadata"),
 						EditAfterExec: c.IsParsed("edit"),
 						GoInputs:      c.RawValues("go-input"),
 						Vars:          vars,

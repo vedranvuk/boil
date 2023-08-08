@@ -4,6 +4,8 @@
 
 package bast
 
+func (self *Bast) IsEmpty() bool { return len(self.Packages) == 0 }
+
 func (self *Package) Declaration(name string) (out Declaration) {
 	for _, file := range self.Files {
 		for _, decl := range file.Declarations {

@@ -6,9 +6,8 @@ package boil
 
 import (
 	"fmt"
-	"os"
+	"io"
 	"sort"
-	"text/tabwriter"
 )
 
 // MetafileName is the name of a file that defines a Boil template.
@@ -184,8 +183,7 @@ func (self Metafile) ExecPostExecuteActions(variables Variables) error {
 
 // Print prints self to stdout.
 // TODO: better layout.
-func (self *Metafile) Print() {
-	var wr = tabwriter.NewWriter(os.Stdout, 2, 2, 2, 32, 0)
+func (self *Metafile) Print(wr io.Writer) {
 	fmt.Fprintf(wr, "Name:\t%s\n", self.Name)
 	fmt.Fprintf(wr, "Description:\t%s\n", self.Description)
 	fmt.Fprintf(wr, "Author Name:\t%s\n", self.Author.Name)
@@ -237,7 +235,6 @@ func (self *Metafile) Print() {
 		fmt.Fprintf(wr, "Description:\t%s\n", group.Description)
 		fmt.Fprintf(wr, "Templates:\t%v\n", group.Templates)
 	}
-	wr.Flush()
 }
 
 // NewAuthor returns a new *Author.
@@ -299,8 +296,7 @@ func (self Prompts) FindByVariable(variable string) *Prompt {
 type Metamap map[string]*Metafile
 
 // Print prints self to stdout.
-func (self Metamap) Print() {
-	var wr = tabwriter.NewWriter(os.Stdout, 2, 2, 2, 32, 0)
+func (self Metamap) Print(wr io.Writer) {
 	var a []string
 	for k := range self {
 		a = append(a, k)
@@ -310,5 +306,4 @@ func (self Metamap) Print() {
 	for _, v := range a {
 		fmt.Fprintf(wr, "%s\t%s\n", v, self[v].Description)
 	}
-	wr.Flush()
 }

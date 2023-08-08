@@ -7,6 +7,7 @@ package info
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/vedranvuk/boil/pkg/boil"
 )
@@ -23,8 +24,9 @@ type Config struct {
 func Run(config *Config) (err error) {
 
 	var (
-		repo boil.Repository
-		meta *boil.Metafile
+		repo    boil.Repository
+		meta    *boil.Metafile
+		printer = boil.NewPrinter(os.Stdout)
 	)
 
 	// Open repository and get its metamap, check template exists.
@@ -35,7 +37,7 @@ func Run(config *Config) (err error) {
 		return fmt.Errorf("template %s not found", config.TemplatePath)
 	}
 
-	meta.Print()
+	meta.Print(printer)
 
 	return nil
 }

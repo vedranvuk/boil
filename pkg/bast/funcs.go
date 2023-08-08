@@ -55,20 +55,20 @@ func (self Bast) VarsOfType(packageName, typeName string) (out []Declaration) {
 // Print debug prints self to stdout.
 func (self *Bast) Print(w io.Writer) {
 	for _, pkg := range self.Packages {
-		fmt.Printf("Package %s\n", pkg.Name)
+		fmt.Fprintf(w, "Package %s\n", pkg.Name)
 		for _, file := range pkg.Files {
-			fmt.Printf("  File: %s\n", file.Name)
+			fmt.Fprintf(w, "  File: %s\n", file.Name)
 			for _, decl := range file.Declarations {
 				switch d := decl.(type) {
 				case *Struct:
-					fmt.Printf("    Struct %s\n", d.Name)
+					fmt.Fprintf(w, "    Struct %s\n", d.Name)
 					for _, field := range d.Fields {
-						fmt.Printf("      Field %s (%s)\n", field.Name, field.Type)
+						fmt.Fprintf(w, "      Field %s (%s)\n", field.Name, field.Type)
 					}
 				case *Interface:
-					fmt.Printf("    Interface %s\n", d.Name)
+					fmt.Fprintf(w, "    Interface %s\n", d.Name)
 					for _, method := range d.Methods {
-						fmt.Printf("      Method %s\n", method.Name)
+						fmt.Fprintf(w, "      Method %s\n", method.Name)
 					}
 				}
 			}

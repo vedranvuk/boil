@@ -99,6 +99,10 @@ type Config struct {
 		RepositoryPath string
 		// DisableBackup overrides the Configuration.DisableBackup.
 		DisableBackup bool
+		// NoRepository if true does not use a repository when interpreting template
+		// paths. Relative paths will be treated as relative to current working
+		// directory.
+		NoRepository bool
 		// Verbose specifies wether to enable verbose output.
 		Verbose bool
 	} `json:"-"`

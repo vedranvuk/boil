@@ -40,9 +40,14 @@ var helpTopics = HelpTopics{
 		Print:       printBast,
 	},
 	{
+		Topic:       "globals",
+		Description: "About global flags.",
+		Print:       printGlobals,
+	},
+	{
 		Topic:       "new",
 		Description: "'new' command usage.",
-		Print:       printEdit,
+		Print:       printNew,
 	},
 	{
 		Topic:       "edit",
@@ -271,11 +276,38 @@ the files of 'config' template in the same output directory and executing
 
 Templates referenced by the group are executed after the parent template files
 and in the order as they are defined in the metafile.
- 
 `
 
 func printRepository() {
 	fmt.Print(repositoryText)
+}
+
+const globalsText = `
+About --no-repository
+
+This option disables the use of repositories. All template paths will be 
+considered as paths pointing to a root of a template, relative or absolute. 
+This also disables metadata loading so no prompts will be presented to the user,
+no actions executed and template group functionality will be unavailable. 
+
+When executing a template in this mode any variables required by template files
+to be executed have to be declared using the --var option or execution fails.
+`
+
+func printGlobals() {
+	cmdline.PrintOptions(os.Stdout, cmdlineConfig, cmdlineConfig.Globals, 0)
+	fmt.Print(globalsText)
+}
+
+const newText = `
+Usage: boil new <template-path> [options]
+
+The new command creates a new template.
+`
+
+func printNew() {
+	cmdline.PrintCommand(os.Stdout, cmdlineConfig, cmdlineConfig.Commands.Find("new"), 0)
+	fmt.Print(newText)
 }
 
 const editText = `

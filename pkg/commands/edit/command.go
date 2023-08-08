@@ -7,6 +7,7 @@ package edit
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -45,6 +46,8 @@ type state struct {
 // If an error occurs it is returned and the operation may be considered failed.
 func Run(config *Config) (err error) {
 
+	var printer = boil.NewPrinter(os.Stdout)
+
 	var state = &state{
 		config:   config.Config,
 		vars:     make(boil.Variables),
@@ -61,7 +64,7 @@ func Run(config *Config) (err error) {
 		state.repoPath = state.tmplPath
 		state.tmplPath = "."
 		if config.Config.Overrides.Verbose {
-			fmt.Println("Absolute Template path specified, repository opened at template root.")
+			printer.Printf("Absolute Template path specified, repository opened at template root.")
 		}
 	}
 
@@ -112,7 +115,7 @@ func Run(config *Config) (err error) {
 			}
 		}
 		if tgtExists && entryExists {
-			fmt.Printf("file '%s' already exists\n", config.EditTarget)
+			printer.Printf("file '%s' already exists\n", config.EditTarget)
 			return nil
 		}
 		fmt.Println("addFile")
@@ -130,7 +133,7 @@ func Run(config *Config) (err error) {
 		return
 	}
 	if config.Config.Overrides.Verbose {
-		state.meta.Print()
+		state.meta.Print(printer)
 	}
 	return state.repo.SaveMeta(state.meta)
 

@@ -6,10 +6,9 @@ package boil
 
 import (
 	"fmt"
-	"os"
+	"io"
 	"strconv"
 	"strings"
-	"text/tabwriter"
 )
 
 // Variable defines a known variable.
@@ -91,10 +90,9 @@ func (self Variables) AddNew(variables Variables) Variables {
 // AddAssignments adds assignments to self overwriting any existing entries 
 // where an assignment is a string in a "key=value" format. 
 //
-// It parses key to Variable key and value to its value. Value is unquoted 
-// before being set under a key. If an entry that is not in such format
-// is found in assignments an error is returned that describes the offending
-// entry and no variables are added to self or in case of any other error.
+// Value is unquoted if quoted. If an entry is found that is not in proper 
+// format an error is returned that describes the offending entry and no 
+// variables are added to self or in case of any other error.
 func (self Variables) AddAssignments(assignments ...string) (err error) {
 	var (
 		temp     = make(Variables)
@@ -105,8 +103,13 @@ func (self Variables) AddAssignments(assignments ...string) (err error) {
 		if key, val, valid = strings.Cut(assignment, "="); !valid {
 			return fmt.Errorf("invalid variable format %s", assignments)
 		}
-		if val, err = strconv.Unquote(val); err != nil {
-			return fmt.Errorf("unquote var value: %w", err)
+		if val == "" {
+			continue
+		}
+		if strings.HasPrefix(val, "\"") && strings.HasSuffix(val, "\"") {
+			if val, err = strconv.Unquote(val); err != nil {
+				return fmt.Errorf("unquote var value: %w", err)
+			}
 		}
 		temp[key] = val
 	}
@@ -116,14 +119,12 @@ func (self Variables) AddAssignments(assignments ...string) (err error) {
 	return
 }
 
-func (self Variables) Print() {
+func (self Variables) Print(wr io.Writer) {
 	if len(self) == 0 {
 		return
 	}
 	fmt.Println("Variables:")
-	var wr = tabwriter.NewWriter(os.Stdout, 2, 2, 2, 32, 0)
 	for k, v := range self {
 		fmt.Fprintf(wr, "%s\t%v\n", k, v)
 	}
-	wr.Flush()
 }

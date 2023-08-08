@@ -8,6 +8,7 @@ package exec
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -52,10 +53,10 @@ type Config struct {
 	// the command line.
 	NoPrompts bool
 
-	// NoRepository if true does not use a repository when interpreting template
-	// paths. Relative paths will be treated as relative to current working
-	// directory.
-	NoRepository bool
+	// NoMetadata if true disables parsing template metadata and copies the
+	// source template files recursively to output directory. This disables
+	// groups and prompts but the variable system still works via command line.
+	NoMetadata bool
 
 	// EditAfterExec if true opens the output with the editor.
 	EditAfterExec bool
@@ -82,7 +83,7 @@ func (self *Config) GetRepositoryPath() string {
 	return self.Config.GetRepositoryPath()
 }
 
-// templateData is the top level data structure passed to a template file being 
+// templateData is the top level data structure passed to a template file being
 // executed using text/template engine before being saved to its output.
 type templateData struct {
 	// Vars contain variables defined via prompts or command line, command
@@ -90,13 +91,6 @@ type templateData struct {
 	Vars boil.Variables
 	// Bast is the bastard go ast.
 	Bast *bast.Bast
-}
-
-// newTemplateData returns a new *templateData instance.
-func newTemplateData() *templateData {
-	return &templateData{
-		Vars: make(boil.Variables),
-	}
 }
 
 // ReplaceAll replaces all known variable placeholders in input string with
@@ -119,16 +113,18 @@ type state struct {
 	Data *templateData
 	// MakeBackup dictates if backups should be made on execution.
 	MakeBackups bool
-	// Templates are the Templates to execute.
-	Templates Tasks
+	// Tasks are the Tasks to execute.
+	Tasks Tasks
 }
 
 // Run executes the Exec command configured by config.
 // If an error occurs it is returned and the operation may be considered failed.
 func Run(config *Config) (err error) {
 
+	var printer = boil.NewPrinter(os.Stdout)
+
 	if config.NoExecute {
-		fmt.Printf("NoExecute enabled, printing commands instead of executing.\n")
+		printer.Printf("NoExecute enabled, printing commands instead of executing.\n")
 	}
 
 	// Init state to Config values.
@@ -137,14 +133,14 @@ func Run(config *Config) (err error) {
 		TemplatePath:   config.TemplatePath,
 		OutputDir:      config.OutputDir,
 		MakeBackups:    config.Config.ShouldBackup(),
-		Data:           newTemplateData(),
+		Data:           &templateData{},
 	}
 
-	// Determine Input and Output locations.
-	if filepath.IsAbs(config.TemplatePath) || config.NoRepository {
-		// If TemplatePath is an absolute path open the Template as the
-		// Repository and adjust the template path to "current directory"
-		// pointing to repository root.
+	// Determine repository and template paths and open repository.
+	if filepath.IsAbs(config.TemplatePath) || config.Config.Overrides.NoRepository {
+		// If TemplatePath is an absolute path or no repository use is forced
+		// open the Template directory as Repository and adjust the template
+		// path to "current directory" pointing to repository root.
 		if path, group, found := strings.Cut(config.TemplatePath, "#"); found {
 			state.TemplatePath = ".#" + group
 			state.RepositoryPath = path
@@ -152,41 +148,53 @@ func Run(config *Config) (err error) {
 			state.TemplatePath = "."
 			state.RepositoryPath = path
 		}
-		if config.ShouldPrint() {
-			fmt.Println("Absolute Template path specified, repository opened at template root.")
+		if config.ShouldPrint() && config.Config.Overrides.NoRepository {
+			printer.Printf("No repository mode.\n")
 		}
 	}
-	if state.OutputDir, err = filepath.Abs(config.OutputDir); err != nil {
-		return fmt.Errorf("get absolute target path: %w", err)
-	}
-
 	if state.Repository, err = boil.OpenRepository(state.RepositoryPath); err != nil {
 		return fmt.Errorf("open repository: %w", err)
 	}
 
-	// Create a Template list, it will contain only the source paths of all
-	// referenced template file paths over all referenced templates in a
-	// possible group. Outputs are determined later after all variables have
-	// been loaded.
-	if state.Templates, err = templatesFromState(state); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("not a boil template: %s", config.TemplatePath)
-		}
-		return fmt.Errorf("enumerate template files for execution: %w", err)
+	// Determine absolute output path.
+	if state.OutputDir, err = filepath.Abs(config.OutputDir); err != nil {
+		return fmt.Errorf("get absolute target path: %w", err)
 	}
 
-	if err = state.Templates.ExecPreParseActions(); err != nil {
+	// Produce execution tasks depending on execution mode.
+	switch config.NoMetadata {
+	case false:
+		// Create a Template list, it will contain only the source paths of all
+		// referenced template file paths over all referenced templates in a
+		// possible group. Outputs are determined later after all variables have
+		// been loaded.
+		if state.Tasks, err = tasksFromMetafile(state.Repository, state.TemplatePath); err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("not a boil template: %s", config.TemplatePath)
+			}
+			return fmt.Errorf("enumerate template files for execution: %w", err)
+		}
+	case true:
+		if state.Tasks, err = tasksFromWalk(state.Repository, state.TemplatePath); err != nil {
+			return fmt.Errorf("enumerate template files for execution: %w", err)
+		}
+	}
+
+	// Exec pre parse actions.
+	if err = state.Tasks.ExecPreParseActions(); err != nil {
 		return fmt.Errorf("pre parse action failed: %w", err)
 	}
 
-	// Add vars declared on command line.
-	state.Data.Vars.AddNew(config.Vars)
-	// Show prompts for variables not satisified early on command line.
-	if !config.NoPrompts {
-		if err = state.Templates.PresentPrompts(state.Data.Vars, true); err != nil {
+	// Set vars declared on command line as initial state vars before showing
+	// prompts so variables declared in prompts that have had their value set
+	// early via command line will not be prompted for.
+	state.Data.Vars = config.Vars
+	if !config.NoPrompts && !config.NoMetadata {
+		if err = state.Tasks.PresentPrompts(state.Data.Vars, true); err != nil {
 			return fmt.Errorf("prompt user for input data: %w", err)
 		}
 	}
+
 	// Override state variables given on command line with ones given in prompt.
 	state.Data.Vars.MaybeSetString(boil.VarOutputDirectory, &state.OutputDir)
 	// Append system variables to state vars if not given
@@ -198,48 +206,45 @@ func Run(config *Config) (err error) {
 	if state.Data.Bast, err = bast.Load(config.GoInputs...); err != nil {
 		return fmt.Errorf("process go input files: %w", err)
 	}
-	if config.ShouldPrint() {
-		fmt.Println("Go input:")
+	if config.ShouldPrint() && !state.Data.Bast.IsEmpty() {
+		printer.Printf("Go input:\n")
 		state.Data.Bast.Print(os.Stdout)
 	}
 
 	// Now that the vars have been loaded expand variable placeholders in
 	// template paths.
-	if err = state.Templates.SetTargetsFromState(state); err != nil {
+	if err = state.Tasks.SetTargetsFromState(state); err != nil {
 		return fmt.Errorf("expand target file names: %w", err)
 	}
 
 	// Validate templates and optionally check for output conflicts.
-	if err = state.Templates.Validate(state); err != nil {
-		return fmt.Errorf("validation failed: %w", err)
+	if !config.NoMetadata {
+		if err = state.Tasks.Validate(state); err != nil {
+			return fmt.Errorf("validation failed: %w", err)
+		}
 	}
 	if !config.Overwrite {
-		if err = state.Templates.CheckForTargetConflicts(); err != nil {
+		if err = state.Tasks.CheckForTargetConflicts(); err != nil {
 			return err
 		}
 	}
 
 	// Optional verbose output.
 	if config.ShouldPrint() {
-		fmt.Printf("Repository location: %s\n", state.Repository.Location())
-		state.Templates.Print()
-		fmt.Println("Templates:")
-		for _, m := range state.Templates {
-			fmt.Printf("Template %s\n", m.Metafile.Path)
-			m.Metafile.Print()
-		}
-		state.Data.Vars.Print()
+		printer.Printf("Repository location: %s\n", state.Repository.Location())
+		state.Tasks.Print(printer)
+		state.Data.Vars.Print(printer)
 	}
 
 	// Exec Pre actions, templates then Post actions. Optionally open output
 	// directory in external editor.
-	if err = state.Templates.ExecPreExecuteActions(state.Data.Vars); err != nil {
+	if err = state.Tasks.ExecPreExecuteActions(state.Data.Vars); err != nil {
 		return fmt.Errorf("pre execute action failed: %w", err)
 	}
-	if err = state.Templates.Execute(state, config.ShouldPrint()); err != nil {
+	if err = state.Tasks.Execute(state, config.ShouldPrint()); err != nil {
 		return
 	}
-	if err = state.Templates.ExecPostExecuteActions(state.Data.Vars); err != nil {
+	if err = state.Tasks.ExecPostExecuteActions(state.Data.Vars); err != nil {
 		return fmt.Errorf("post execute action failed: %w", err)
 	}
 	if config.EditAfterExec {
@@ -251,18 +256,18 @@ func Run(config *Config) (err error) {
 	return nil
 }
 
-// templatesFromState returns Templates to be executed from a state. It
+// tasksFromMetafile returns Templates to be executed from a state. It
 // returns empty Templates and an error if the state is invalid, one or more
 // template files is missing, any group addresses a missing template or some
 // other error.
-func templatesFromState(state *state) (templates Tasks, err error) {
-	err = produceTemplates(state, state.TemplatePath, &templates)
+func tasksFromMetafile(repo boil.Repository, path string) (templates Tasks, err error) {
+	err = produceTasksFromMetafile(repo, path, &templates)
 	return
 }
 
-// produceTemplates uses state to recursively construct execs starting
+// produceTasksFromMetafile uses state to recursively construct execs starting
 // from path. if the function failes it returns an error.
-func produceTemplates(state *state, path string, out *Tasks) (err error) {
+func produceTasksFromMetafile(repo boil.Repository, path string, out *Tasks) (err error) {
 
 	var (
 		meta   *boil.Metafile
@@ -272,7 +277,7 @@ func produceTemplates(state *state, path string, out *Tasks) (err error) {
 
 	path, group, _ = strings.Cut(path, "#")
 
-	if meta, err = state.Repository.OpenMeta(path); err != nil {
+	if meta, err = repo.OpenMeta(path); err != nil {
 		return err
 	}
 
@@ -289,7 +294,7 @@ func produceTemplates(state *state, path string, out *Tasks) (err error) {
 	}
 
 	for _, file := range meta.Files {
-		if exists, err = state.Repository.Exists(filepath.Join(path, file)); err != nil {
+		if exists, err = repo.Exists(filepath.Join(path, file)); err != nil {
 			return err
 		}
 		if !exists {
@@ -310,7 +315,7 @@ func produceTemplates(state *state, path string, out *Tasks) (err error) {
 				continue
 			}
 			for _, name := range g.Templates {
-				if err = produceTemplates(state, filepath.Join(path, name), out); err != nil {
+				if err = produceTasksFromMetafile(repo, filepath.Join(path, name), out); err != nil {
 					return
 				}
 			}
@@ -318,4 +323,31 @@ func produceTemplates(state *state, path string, out *Tasks) (err error) {
 	}
 
 	return nil
+}
+
+// tasksFromWalk returns Templates to be executed from walking the repo starting
+// at the root directory or an error if one occured.
+func tasksFromWalk(repo boil.Repository, root string) (out Tasks, err error) {
+	var task = new(Task)
+	if err = repo.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if root == path {
+			return nil
+		}
+		var (
+			exe = new(Execute)
+			rel string
+		)
+		if rel, err = filepath.Rel(root, path); err != nil {
+			return err
+		}
+		exe.Path = rel
+		exe.Source = path
+		exe.IsDir = d.IsDir()
+		task.List = append(task.List, exe)
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf("enumerate source files: %w", err)
+	}
+	out = append(out, task)
+	return
 }

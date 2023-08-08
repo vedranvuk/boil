@@ -7,6 +7,7 @@ package boil
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,7 +22,7 @@ type Repository interface {
 	// Repository backend.
 	Location() string
 
-	// LoadMetamap loads metadata from repository walking all child 
+	// LoadMetamap loads metadata from repository walking all child
 	// subdirectories and returns it or returns a descriptive error.
 	//
 	// The resulting Metamap will contain a *Metadata for each subdirectory at
@@ -30,7 +31,7 @@ type Repository interface {
 	//
 	// If the root of the Repository contains Metafile i.e. is a Template
 	// itself an entry for it will be set under current directory dot ".".
-	// 
+	//
 	// Any groups defined in a template will be added under the same path as the
 	// template that defines them but with a group name suffix prefixed with a
 	// "#". For example if a template 'go/app' defines a 'config' group it would
@@ -62,6 +63,12 @@ type Repository interface {
 	// deletes all content in the directory at path, recusrively. Returns an
 	// error if one occured.
 	Remove(path string) error
+
+	// WalkDir walks the repository depth first and calls f for each file or
+	// directory found in the repository. Behaves exactly like filepath.WalkDir
+	// except that the path given to f will be a path relative to the repository 
+	// root.
+	WalkDir(root string, f fs.WalkDirFunc) error
 }
 
 // OpenRepository opens a repository at the specified path. It returns an

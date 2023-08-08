@@ -40,9 +40,10 @@ type Config struct {
 func Run(config *Config) (err error) {
 
 	var (
-		repo   boil.Repository
-		meta   *boil.Metafile
-		source string
+		repo    boil.Repository
+		meta    *boil.Metafile
+		source  string
+		printer = boil.NewPrinter(os.Stdout)
 	)
 
 	// Open repository and get its metamap, check template exists.
@@ -109,13 +110,13 @@ func Run(config *Config) (err error) {
 
 	// Verbose
 	if config.Config.Overrides.Verbose {
-		fmt.Printf("Abs source path:     %s\n", source)
-		fmt.Printf("Template path:       %s\n", config.SourcePath)
-		fmt.Printf("Overwrite Template:  %t\n", config.Overwrite)
-		fmt.Printf("Repository location: %s\n", repo.Location())
-		fmt.Println()
-		fmt.Printf("Metafile:")
-		meta.Print()
+		printer.Printf("Abs source path:     %s\n", source)
+		printer.Printf("Template path:       %s\n", config.SourcePath)
+		printer.Printf("Overwrite Template:  %t\n", config.Overwrite)
+		printer.Printf("Repository location: %s\n", repo.Location())
+		printer.Printf("\n")
+		printer.Printf("Metafile:")
+		meta.Print(printer)
 	}
 
 	if err = repo.SaveMeta(meta); err != nil {
@@ -127,7 +128,7 @@ func Run(config *Config) (err error) {
 		dir = filepath.Join(config.TemplatePath, dir)
 
 		if config.Config.Overrides.Verbose {
-			fmt.Printf("Create template directory: '%s'\n", dir)
+			printer.Printf("Create template directory: '%s'\n", dir)
 		}
 
 		if err = repo.Mkdir(dir); err != nil {
@@ -145,7 +146,7 @@ func Run(config *Config) (err error) {
 		)
 
 		if config.Config.Overrides.Verbose {
-			fmt.Printf("Copy %s to %s\n", inFn, outFn)
+			printer.Printf("Copy %s to %s\n", inFn, outFn)
 		}
 
 		if data, err = os.ReadFile(inFn); err != nil {
