@@ -11,12 +11,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/vedranvuk/boil/cmd/boil/internal/commands/edit"
-	"github.com/vedranvuk/boil/cmd/boil/internal/commands/exec"
-	"github.com/vedranvuk/boil/cmd/boil/internal/commands/info"
-	"github.com/vedranvuk/boil/cmd/boil/internal/commands/list"
-	"github.com/vedranvuk/boil/cmd/boil/internal/commands/newt"
-	"github.com/vedranvuk/boil/cmd/boil/internal/commands/snap"
+	"github.com/vedranvuk/boil/pkg/commands/edit"
+	"github.com/vedranvuk/boil/pkg/commands/exec"
+	"github.com/vedranvuk/boil/pkg/commands/info"
+	"github.com/vedranvuk/boil/pkg/commands/list"
+	"github.com/vedranvuk/boil/pkg/commands/newt"
+	"github.com/vedranvuk/boil/pkg/commands/snap"
 	"github.com/vedranvuk/boil/pkg/boil"
 	"github.com/vedranvuk/cmdline"
 )
