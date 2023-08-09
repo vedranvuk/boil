@@ -1,4 +1,5 @@
 {
+	"name": "crudstruct",
 	"description": "Generate CRUD methods for a struct using mysql.",
 	"author": {
 		"name": "Vedran"

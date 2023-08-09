@@ -12,55 +12,6 @@ import (
 	"github.com/vedranvuk/cmdline"
 )
 
-// helpTopics are the available help topic definitions.
-var helpTopics = HelpTopics{
-	{
-		Topic:       "help",
-		Description: "Help system usage.",
-		Print:       printHelp,
-	},
-	{
-		Topic:       "overview",
-		Description: "Short overview on boil usage.",
-		Print:       printOverview,
-	},
-	{
-		Topic:       "repo",
-		Description: "About repositories.",
-		Print:       printRepository,
-	},
-	{
-		Topic:       "metafile",
-		Description: "Boil metafile reference.",
-		Print:       printMetafile,
-	},
-	{
-		Topic:       "bast",
-		Description: "Bast reference.",
-		Print:       printBast,
-	},
-	{
-		Topic:       "globals",
-		Description: "About global flags.",
-		Print:       printGlobals,
-	},
-	{
-		Topic:       "new",
-		Description: "'new' command usage.",
-		Print:       printNew,
-	},
-	{
-		Topic:       "edit",
-		Description: "'edit' command usage.",
-		Print:       printEdit,
-	},
-	{
-		Topic:       "exec",
-		Description: "'exec' command usage.",
-		Print:       printExec,
-	},
-}
-
 // handleHelp is the help command handler.
 func handleHelp(c cmdline.Context) error {
 
@@ -124,17 +75,134 @@ func (self HelpTopics) Print(topic string) {
 	}
 }
 
-const helpText = `Help command
-
-The help command provides help on some topic or extended help about a command.
-To get help about a specific command or topic type 'boil help <command|topic>'.
-`
+// helpTopics are the available help topic definitions.
+var helpTopics = HelpTopics{
+	{
+		Topic:       "help",
+		Description: "Help system usage.",
+		Print:       printHelp,
+	},
+	{
+		Topic:       "overview",
+		Description: "Short overview on boil usage.",
+		Print:       printOverview,
+	},
+	{
+		Topic:       "repo",
+		Description: "About repositories.",
+		Print:       printRepository,
+	},
+	{
+		Topic:       "metafile",
+		Description: "Boil metafile reference.",
+		Print:       printMetafile,
+	},
+	{
+		Topic:       "bast",
+		Description: "Bast reference.",
+		Print:       printBast,
+	},
+	{
+		Topic:       "globals",
+		Description: "About global flags.",
+		Print:       printGlobals,
+	},
+	{
+		Topic:       "new",
+		Description: "'new' command usage.",
+		Print:       printNew,
+	},
+	{
+		Topic:       "snap",
+		Description: "'snap' command usage.",
+		Print:       printSnap,
+	},
+	{
+		Topic:       "list",
+		Description: "'list' command usage.",
+		Print:       printList,
+	},
+	{
+		Topic:       "info",
+		Description: "'info' command usage.",
+		Print:       printInfo,
+	},
+	{
+		Topic:       "edit",
+		Description: "'edit' command usage.",
+		Print:       printEdit,
+	},
+	{
+		Topic:       "exec",
+		Description: "'exec' command usage.",
+		Print:       printExec,
+	},
+}
 
 func printHelp() {
 	fmt.Print(helpText)
 }
 
+func printOverview() {
+	fmt.Print(overviewText)
+}
+
+func printRepository() {
+	fmt.Print(repositoryText)
+}
+
+func printGlobals() {
+	cmdline.PrintOptions(os.Stdout, cmdlineConfig, cmdlineConfig.Globals, 0)
+	fmt.Print(globalsText)
+}
+
+func printNew() {
+	cmdline.PrintCommand(os.Stdout, cmdlineConfig, cmdlineConfig.Commands.Find("new"), 0)
+	fmt.Print(newText)
+}
+
+func printSnap() {
+	cmdline.PrintCommand(os.Stdout, cmdlineConfig, cmdlineConfig.Commands.Find("snap"), 0)
+	fmt.Print(snapText)
+}
+
+func printList() {
+	cmdline.PrintCommand(os.Stdout, cmdlineConfig, cmdlineConfig.Commands.Find("info"), 0)
+	fmt.Print(listText)
+}
+
+func printInfo() {
+	cmdline.PrintCommand(os.Stdout, cmdlineConfig, cmdlineConfig.Commands.Find("info"), 0)
+	fmt.Print(infoText)
+}
+func printEdit() {
+	cmdline.PrintCommand(os.Stdout, cmdlineConfig, cmdlineConfig.Commands.Find("edit"), 0)
+	fmt.Print(editText)
+}
+
+func printExec() {
+	cmdline.PrintCommand(os.Stdout, cmdlineConfig, cmdlineConfig.Commands.Find("exec"), 0)
+	fmt.Print(execText)
+}
+
+func printBast() {
+	fmt.Print(bastText)
+}
+
+func printMetafile() {
+	fmt.Print(metafileText)
+}
+
+const helpText = `Help command
+
+The help command provides help on some topic or extended help about a command.
+To get help about a specific command or topic type 'boil help <command|topic>'.
+
+To list topics type 'boil help -l'
+`
+
 const overviewText = `Short primer on using boil
+
 
 Boil
 
@@ -143,6 +211,7 @@ packages it into a collection of patrametrized files and directories called
 Templates which can then be used to create project boilerplates or smaller 
 fragments of a project. The standard text/template package is used to enable 
 parametrization of input files.
+
 
 Template
 
@@ -167,6 +236,7 @@ For more info on data available to a template file see:
   'boil help exec' for info on how to access data from a template file.
   'boil help bast' for bast go parser reference.
 
+
 Repository
 
 Templates are created in Repositories which reside on disk in some directory.
@@ -179,6 +249,7 @@ Templates are addressed by path inside the Repository, i.e.: 'apps/webapp' or
 by using an absolute path to a Template directory, i.e.: '/home/templates/app'
 in which case repository is ignore and the template loaded directly from the
 specified directory.
+
 
 Template paths
 
@@ -204,10 +275,6 @@ An absolute path to a template that addresses a group defined in the template:
 
 For more info on template paths and groups see 'boil help repository'.
 `
-
-func printOverview() {
-	fmt.Print(overviewText)
-}
 
 const repositoryText = `
 Repository
@@ -278,26 +345,33 @@ Templates referenced by the group are executed after the parent template files
 and in the order as they are defined in the metafile.
 `
 
-func printRepository() {
-	fmt.Print(repositoryText)
-}
+const metafileText = `Metafile
+
+TODO: Metafile help.
+`
+
+const bastText = `Bast
+
+(B)astard (AST) defines a simple object model from standard Go AST which allows
+easier access to an input go file syntax tree and is designed to be used from 
+within a template file being executed using 'text/template'.
+
+Currently, it parses only top level interface and struct declarations from each 
+input file.
+
+It is accessible from {{.Bast}} pipeline from inside a template file or via 
+template functions.
+
+TODO: BAST object reference.
+TODO: BAST function reference.
+`
 
 const globalsText = `
 About --no-repository
 
 This option disables the use of repositories. All template paths will be 
 considered as paths pointing to a root of a template, relative or absolute. 
-This also disables metadata loading so no prompts will be presented to the user,
-no actions executed and template group functionality will be unavailable. 
-
-When executing a template in this mode any variables required by template files
-to be executed have to be declared using the --var option or execution fails.
 `
-
-func printGlobals() {
-	cmdline.PrintOptions(os.Stdout, cmdlineConfig, cmdlineConfig.Globals, 0)
-	fmt.Print(globalsText)
-}
 
 const newText = `
 Usage: boil new <template-path> [options]
@@ -305,10 +379,35 @@ Usage: boil new <template-path> [options]
 The new command creates a new template.
 `
 
-func printNew() {
-	cmdline.PrintCommand(os.Stdout, cmdlineConfig, cmdlineConfig.Commands.Find("new"), 0)
-	fmt.Print(newText)
-}
+const snapText = `
+Usage: boil snap <template-path> [options]
+
+The new command creates a new template from a source directory.
+`
+
+const listText = `
+Usage: boil edit <template-path> [options] [subcommand [options]]
+
+The edit commands edits a template files or template metadata.
+
+Executing the edit command without a subcommand opens the template directory in
+the editor defined in the configuration file. If one is not defined the template
+directory is opened in the system default file explorer.
+
+Edit subcommands open command prompt editors for metadata or parts of it.
+`
+
+const infoText = `
+Usage: boil edit <template-path> [options] [subcommand [options]]
+
+The edit commands edits a template files or template metadata.
+
+Executing the edit command without a subcommand opens the template directory in
+the editor defined in the configuration file. If one is not defined the template
+directory is opened in the system default file explorer.
+
+Edit subcommands open command prompt editors for metadata or parts of it.
+`
 
 const editText = `
 Usage: boil edit <template-path> [options] [subcommand [options]]
@@ -321,11 +420,6 @@ directory is opened in the system default file explorer.
 
 Edit subcommands open command prompt editors for metadata or parts of it.
 `
-
-func printEdit() {
-	cmdline.PrintCommand(os.Stdout, cmdlineConfig, cmdlineConfig.Commands.Find("edit"), 0)
-	fmt.Print(editText)
-}
 
 const execText = `
 Usage: boil exec <template-path> [options]
@@ -361,37 +455,22 @@ is not oterwise given using the 'var' exec option the exec command will fail.
 
 Variables defined using the 'var' option can (currently) also override values 
 of exec option values, and take precedence over values given in options 
-themselves. The mapping is as follows: 
+themselves. Var option can be specified multiple times. 
+The mapping is as follows: 
 
   OutputDirectory  output-dir
+
+The 'go-input' option takes a relative or absolute path to a go package or a 
+file and can be specified multiple times. Each package will be a separate 
+package in the resulting Bast and all files will be in a placeholder package
+which can be referenced from a template by using an empty string as the package 
+name in functions that require it.
+
+The 'no-metadata' option disables use of template metadata so any functions
+that are supported by the metafile will not function. This includes prompts, 
+template groups and actions. All variables required by template files must be
+declared up fron using the 'var' option or the execution will fail.
+
+Variable placeholders still work and the source template is copied recursively
+to the output directory.
 `
-
-func printExec() {
-	cmdline.PrintCommand(os.Stdout, cmdlineConfig, cmdlineConfig.Commands.Find("exec"), 0)
-	fmt.Print(execText)
-}
-
-const bastText = `Bast
-
-(B)astard (AST) defines a simple object model from standard Go AST which allows
-easier access to an input go file syntax tree and is designed to be used from 
-within a template file being executed using 'text/template'.
-
-Currently, it parses only top level interface and struct declarations from each 
-input file.
-
-It is accessible from {{.Bast}} pipeline from inside a template file or via 
-template functions.
-
-TODO: BAST object reference.
-TODO: BAST function reference.
-`
-
-func printBast() { fmt.Print(bastText) }
-
-const metafileText = `Metafile
-
-TODO: Metafile help.
-`
-
-func printMetafile() { fmt.Print(metafileText) }

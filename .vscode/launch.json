@@ -99,6 +99,55 @@
 				"-o",
 				"${workspaceFolder}/_testdata/output/norepo"
 			]
+		},
+		{
+			"name": "boil: list",
+			"type": "go",
+			"request": "launch",
+			"mode": "auto",
+			"console": "integratedTerminal",
+			"internalConsoleOptions": "neverOpen",
+			"program": "${workspaceFolder}/cmd/boil",
+			"cwd": "${workspaceFolder}",
+			"args": [
+				"-v",
+				"list"
+			]
+		},
+		{
+			"name": "boil: edit (no repo)",
+			"type": "go",
+			"request": "launch",
+			"mode": "auto",
+			"console": "integratedTerminal",
+			"internalConsoleOptions": "neverOpen",
+			"program": "${workspaceFolder}/cmd/boil",
+			"cwd": "${workspaceFolder}",
+			"args": [
+				"-v",
+				"-n",
+				"edit",
+				".boil/go/db/mysql/crudstruct"
+			]
+		},
+		{
+			"name": "boil: snap (no repo)",
+			"type": "go",
+			"request": "launch",
+			"mode": "auto",
+			"console": "integratedTerminal",
+			"internalConsoleOptions": "neverOpen",
+			"program": "${workspaceFolder}/cmd/boil",
+			"cwd": "${workspaceFolder}",
+			"args": [
+				"-v",
+				"-n",
+				"snap",
+				"-w",
+				"-z",
+				"_testdata/output/penis",
+				"_testdata/input/norepo"
+			]
 		}
 	]
 }

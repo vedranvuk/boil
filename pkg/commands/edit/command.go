@@ -56,15 +56,14 @@ func Run(config *Config) (err error) {
 	}
 
 	state.tmplPath, _, _ = strings.Cut(config.TemplatePath, "#")
-
-	if filepath.IsAbs(config.TemplatePath) {
+	if filepath.IsAbs(config.TemplatePath) || config.Config.Overrides.NoRepository {
 		// If TemplatePath is an absolute path open the Template as the
 		// Repository and adjust the template path to "current directory"
 		// pointing to repository root.
 		state.repoPath = state.tmplPath
 		state.tmplPath = "."
 		if config.Config.Overrides.Verbose {
-			printer.Printf("Absolute Template path specified, repository opened at template root.")
+			printer.Printf("Absolute Template path specified, repository opened at template root.\n")
 		}
 	}
 
@@ -75,7 +74,7 @@ func Run(config *Config) (err error) {
 		return fmt.Errorf("template %s not found", config.TemplatePath)
 	}
 
-	state.vars[boil.VarTemplatePath.String()] = filepath.Join(state.repo.Location(), config.TemplatePath)
+	state.vars[boil.VarTemplatePath.String()] = filepath.Join(state.repo.Location(), state.tmplPath)
 
 	var (
 		tgtExists, entryExists bool
@@ -83,7 +82,7 @@ func Run(config *Config) (err error) {
 	)
 	switch config.EditAction {
 	case "edit":
-		state.vars[boil.VarEditTarget.String()] = filepath.Join(state.repo.Location(), config.TemplatePath)
+		state.vars[boil.VarEditTarget.String()] = filepath.Join(state.repo.Location(), state.tmplPath)
 		return config.Config.ExternalEditor.Execute(state.vars)
 	case "all":
 		err = boil.NewEditor(config.Config, state.meta).EditAll()

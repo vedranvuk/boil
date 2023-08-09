@@ -8,6 +8,8 @@ package info
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/vedranvuk/boil/pkg/boil"
 )
@@ -24,20 +26,35 @@ type Config struct {
 func Run(config *Config) (err error) {
 
 	var (
-		repo    boil.Repository
-		meta    *boil.Metafile
-		printer = boil.NewPrinter(os.Stdout)
+		repo     boil.Repository
+		meta     *boil.Metafile
+		printer  = boil.NewPrinter(os.Stdout)
+		repoPath = config.Config.GetRepositoryPath()
+		tmplPath string
 	)
 
+	tmplPath, _, _ = strings.Cut(config.TemplatePath, "#")
+	if filepath.IsAbs(config.TemplatePath) || config.Config.Overrides.NoRepository {
+		// If TemplatePath is an absolute path open the Template as the
+		// Repository and adjust the template path to "current directory"
+		// pointing to repository root.
+		repoPath = tmplPath
+		tmplPath = "."
+		if config.Config.Overrides.Verbose {
+			printer.Printf("Absolute Template path specified, repository opened at template root.")
+		}
+	}
+
 	// Open repository and get its metamap, check template exists.
-	if repo, err = boil.OpenRepository(config.Config.GetRepositoryPath()); err != nil {
+	if repo, err = boil.OpenRepository(repoPath); err != nil {
 		return fmt.Errorf("open repository: %w", err)
 	}
-	if meta, err = repo.OpenMeta(config.TemplatePath); err != nil {
+	if meta, err = repo.OpenMeta(tmplPath); err != nil {
 		return fmt.Errorf("template %s not found", config.TemplatePath)
 	}
 
 	meta.Print(printer)
+	printer.Flush()
 
 	return nil
 }

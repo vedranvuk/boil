@@ -302,7 +302,6 @@ func (self Metamap) Print(wr io.Writer) {
 		a = append(a, k)
 	}
 	sort.Strings(a)
-	fmt.Fprintf(wr, "[Path]\t[Template Name]\t[Description]\n")
 	for _, v := range a {
 		fmt.Fprintf(wr, "%s\t%s\n", v, self[v].Description)
 	}

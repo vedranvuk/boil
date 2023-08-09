@@ -51,6 +51,7 @@ func Run(config *Config) (err error) {
 	}
 	printer.Printf("\n")
 	list.Print(printer)
+	printer.Flush()
 
 	return nil
 }

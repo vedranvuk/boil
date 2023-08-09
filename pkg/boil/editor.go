@@ -5,7 +5,6 @@
 package boil
 
 import (
-	"errors"
 	"fmt"
 	"os"
 )
@@ -262,11 +261,13 @@ func (self *Editor) EditInfo() (err error) {
 }
 
 func (self *Editor) EditFiles() error {
-	return errors.New("not implemented")
+	// TODO: Implement Editor.EditFiles.
+	return nil
 }
 
 func (self *Editor) EditDirs() error {
-	return errors.New("not implemented")
+	// TODO: Implement Editor.EditDirs.
+	return nil
 }
 
 func (self *Editor) EditPrompt(prompt *Prompt) (err error) {
@@ -336,17 +337,21 @@ func (self *Editor) EditPrompts() (err error) {
 }
 
 func (self *Editor) EditPreParse() error {
-	return errors.New("not implemented")
+	// TODO: Implement Editor.EditPreParse.
+	return nil
 }
 
 func (self *Editor) EditPreExec() error {
-	return errors.New("not implemented")
+	// TODO: Implement Editor.EditPreExec.
+	return nil
 }
 
 func (self *Editor) EditPostExec() error {
-	return errors.New("not implemented")
+	// TODO: Implement Editor.EditPostExec.
+	return nil
 }
 
 func (self *Editor) EditGroups() error {
-	return errors.New("not implemented")
+	// TODO: Implement Editor.EditGroups.
+	return nil
 }

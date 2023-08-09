@@ -1,0 +1,15 @@
+{
+	"name": "penis",
+	"author": {
+		"name": "Vedran",
+		"email": "vedranvuk82@gmail.com"
+	},
+	"version": "1.0.0",
+	"url": "https://",
+	"files": [
+		"$FileName.go"
+	],
+	"directories": [],
+	"prompts": [],
+	"actions": {}
+}

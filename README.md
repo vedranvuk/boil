@@ -38,6 +38,9 @@ Up to date help is in the tool itself and reachable via `boil help`.
 
 To install boil type `go install github.com/vedranvuk/boil`.
 
+## Examples
+
+
 ## License
 
 MIT

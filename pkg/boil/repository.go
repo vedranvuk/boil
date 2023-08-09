@@ -52,7 +52,7 @@ type Repository interface {
 	// GetFile gets contents of the file at path. It must exist and be
 	// referenced in meta.
 	ReadFile(path string) ([]byte, error)
-	// PutFile puts data as contents of the file at path into repository.
+	// WriteFile writes data as contents of the file at path into repository.
 	// File may exists and if it does will be truncated and overwritten.
 	// Path must be referenced in meta. Directories will be created as needed
 	// if the file is referenced in meta.
