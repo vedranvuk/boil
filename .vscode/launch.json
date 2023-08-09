@@ -145,7 +145,7 @@
 				"snap",
 				"-w",
 				"-z",
-				"_testdata/output/penis",
+				"_testdata/output/norepo",
 				"_testdata/input/norepo"
 			]
 		}
