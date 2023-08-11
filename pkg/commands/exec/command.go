@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/vedranvuk/boil/pkg/bast"
+	"github.com/vedranvuk/bast/pkg/bast"
 	"github.com/vedranvuk/boil/pkg/boil"
 )
 
@@ -206,9 +206,9 @@ func Run(config *Config) (err error) {
 	if state.Data.Bast, err = bast.Load(config.GoInputs...); err != nil {
 		return fmt.Errorf("process go input files: %w", err)
 	}
-	if config.ShouldPrint() && !state.Data.Bast.IsEmpty() {
+	if config.ShouldPrint() && len(state.Data.Bast.Packages) > 0 {
 		printer.Printf("Go input:\n")
-		state.Data.Bast.Print(os.Stdout)
+		bast.Print(os.Stdout, state.Data.Bast)
 	}
 
 	// Now that the vars have been loaded expand variable placeholders in

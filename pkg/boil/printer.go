@@ -25,6 +25,9 @@ func (self *Printer) Printf(format string, args ...any) {
 	self.w.Flush()
 }
 
-func (self *Printer) Write(p []byte) (n int, err error) { return self.w.Write(p) }
-
-func (self *Printer) Flush() { self.w.Flush() }
+func (self *Printer) Write(p []byte) (n int, err error) { 
+	if _, err = self.w.Write(p) ; err != nil {
+		return
+	}
+	return 0, self.w.Flush()
+}

@@ -54,7 +54,6 @@ func Run(config *Config) (err error) {
 	}
 
 	meta.Print(printer)
-	printer.Flush()
 
 	return nil
 }
