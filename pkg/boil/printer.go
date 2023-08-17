@@ -7,10 +7,13 @@ import (
 	"text/tabwriter"
 )
 
+// Printer is a boil preset TabWriter.
 type Printer struct {
 	w *tabwriter.Writer
 }
 
+// NewPrinter returns a new *Printer that writes to w.
+// If w is nil Printer prints to stdout.
 func NewPrinter(w io.Writer) *Printer {
 	if w == nil {
 		w = os.Stdout

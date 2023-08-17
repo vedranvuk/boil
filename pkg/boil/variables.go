@@ -12,26 +12,48 @@ import (
 )
 
 // Variable defines a known variable.
+// A known variable is a variable that oil sets or manipulates but it can be
+// set ot overriden by the user in various situations.
+// Each one has its magic described.
 type Variable int
 
 const (
-	// VarWorkingDirectory is always available.
-	VarWorkingDirectory Variable = iota
 	// VarTemplatePath is exec command template-path.
-	VarTemplatePath
-	// VarOutputDirectory is exec command output-dir.
-	VarOutputDirectory
-	// VarEditTarget is the target to be edited by external editor.
-	// It's either a file or a directory, depending on the edit action.
+	VarTemplatePath Variable = iota
+
+	VarModulePath
+
+	// VarProjectName is used in the context of a project generation by the
+	// exec command. It is by default determined from the base of the OutputDir.
+	VarProjectName
+	// VarWorkingDir is always available.
+	VarWorkingDir
+	// VarOutputDir is exec command output-dir.
+	// It can be set via prompt to override value giveon on command line.
+	VarOutputDir
+
+	// VarEditTarget is set by a command.
 	VarEditTarget
+
+	// VarAuthor holds the author name.
+	VarAuthorName
+
+	VarAuthorEmail
+
+	VarAuthorHomepage
 )
 
 // StdVariables is a slice of standard variables.
 var StdVariables = []string{
-	"WorkingDirectory",
 	"TemplatePath",
-	"OutputDirectory",
+	"ModulePath",
+	"ProjectName",
+	"WorkingDir",
+	"OutputDir",
 	"EditTarget",
+	"AuthorName",
+	"AuthorEmail",
+	"AuthorHomepage",
 }
 
 // String reurns string representation of Variable.
@@ -57,6 +79,12 @@ func (self Variables) ReplacePlaceholders(in string) (out string) {
 		out = strings.ReplaceAll(out, "$"+k, v.(string))
 	}
 	return out
+}
+
+// Exists returns true if variable under name exists.
+func (self Variables) Exists(name string) (exists bool) {
+	_, exists = self[name]
+	return
 }
 
 // MaybeSetString sets the value of out to the value of the Variable under key
@@ -87,13 +115,13 @@ func (self Variables) AddNew(variables Variables) Variables {
 	return self
 }
 
-// AddAssignments adds assignments to self overwriting any existing entries 
-// where an assignment is a string in a "key=value" format. 
+// SetAssignments adds assignments to self overwriting any existing entries
+// where an assignment is a string in a "key=value" format.
 //
-// Value is unquoted if quoted. If an entry is found that is not in proper 
-// format an error is returned that describes the offending entry and no 
+// Value is unquoted if quoted. If an entry is found that is not in proper
+// format an error is returned that describes the offending entry and no
 // variables are added to self or in case of any other error.
-func (self Variables) AddAssignments(assignments ...string) (err error) {
+func (self Variables) SetAssignments(assignments ...string) (err error) {
 	var (
 		temp     = make(Variables)
 		key, val string

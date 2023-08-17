@@ -44,6 +44,10 @@ func Run(config *Config) (err error) {
 			list[k] = v
 		}
 	}
+	if len(list) == 0 {
+		printer.Printf("No templates in repository.\n")
+		return nil
+	}
 	if config.Prefix != "" {
 		printer.Printf("Templates found in current repository at %s:\n", config.Prefix)
 	} else {

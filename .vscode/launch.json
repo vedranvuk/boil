@@ -148,6 +148,42 @@
 				"_testdata/output/norepo",
 				"_testdata/input/norepo"
 			]
+		},
+		{
+			"name": "boil: bast test",
+			"type": "go",
+			"request": "launch",
+			"mode": "auto",
+			"console": "integratedTerminal",
+			"internalConsoleOptions": "neverOpen",
+			"program": "${workspaceFolder}/cmd/boil",
+			"cwd": "${workspaceFolder}",
+			"args": [
+				"-v",
+				"exec",
+				"-w",
+				"-m",
+				"${workspaceFolder}/_testdata/input/norepo",
+				"-o",
+				"${workspaceFolder}/_testdata/output/norepo"
+			]
+		},
+		{
+			"name": "boil: pkgapptest",
+			"type": "go",
+			"request": "launch",
+			"mode": "auto",
+			"console": "integratedTerminal",
+			"internalConsoleOptions": "neverOpen",
+			"program": "${workspaceFolder}/cmd/boil",
+			"cwd": "/home/vedran/projects",
+			"args": [
+				"-v",
+				"exec",
+				"go/pkg",
+				"-w",
+				"-e"
+			]
 		}
 	]
 }

@@ -37,7 +37,7 @@ type state struct {
 	config   *boil.Config
 	repo     boil.Repository
 	meta     *boil.Metafile
-	vars     boil.Variables
+	data     *boil.Data
 	tmplPath string
 	repoPath string
 }
@@ -50,7 +50,7 @@ func Run(config *Config) (err error) {
 
 	var state = &state{
 		config:   config.Config,
-		vars:     make(boil.Variables),
+		data:     boil.NewData(),
 		tmplPath: config.TemplatePath,
 		repoPath: config.Config.GetRepositoryPath(),
 	}
@@ -74,7 +74,7 @@ func Run(config *Config) (err error) {
 		return fmt.Errorf("template %s not found", config.TemplatePath)
 	}
 
-	state.vars[boil.VarTemplatePath.String()] = filepath.Join(state.repo.Location(), state.tmplPath)
+	state.data.Vars[boil.VarTemplatePath.String()] = filepath.Join(state.repo.Location(), state.tmplPath)
 
 	var (
 		tgtExists, entryExists bool
@@ -82,8 +82,8 @@ func Run(config *Config) (err error) {
 	)
 	switch config.EditAction {
 	case "edit":
-		state.vars[boil.VarEditTarget.String()] = filepath.Join(state.repo.Location(), state.tmplPath)
-		return config.Config.ExternalEditor.Execute(state.vars)
+		state.data.Vars[boil.VarEditTarget.String()] = filepath.Join(state.repo.Location(), state.tmplPath)
+		return config.Config.Editor.Execute(state.data)
 	case "all":
 		err = boil.NewEditor(config.Config, state.meta).EditAll()
 	case "info":

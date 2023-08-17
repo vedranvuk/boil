@@ -17,9 +17,9 @@ const MetafileName = "boil.json"
 func NewMetafile(config *Config) *Metafile {
 	return &Metafile{
 		Author: &Author{
-			Name:     config.DefaultAuthor.Name,
-			Email:    config.DefaultAuthor.Email,
-			Homepage: config.DefaultAuthor.Homepage,
+			Name:     config.Author.Name,
+			Email:    config.Author.Email,
+			Homepage: config.Author.Homepage,
 		},
 		Version:     "1.0.0",
 		URL:         "https://",
@@ -170,15 +170,15 @@ func (self Metafile) ExecPreParseActions() error {
 // ExecPreExecuteActions executes all PreExecute Actions defined in the Metafile.
 // It returns the error of the first Action that failed and stops execution.
 // If no error occurs nil is returned.
-func (self Metafile) ExecPreExecuteActions(variables Variables) error {
-	return self.Actions.PreExecute.ExecuteAll(variables)
+func (self Metafile) ExecPreExecuteActions(data *Data) error {
+	return self.Actions.PreExecute.ExecuteAll(data)
 }
 
 // ExecPostExecuteActions executes all PostExecute Actions defined in the Metafile.
 // It returns the error of the first Action that failed and stops execution.
 // If no error occurs nil is returned.
-func (self Metafile) ExecPostExecuteActions(variables Variables) error {
-	return self.Actions.PostExecute.ExecuteAll(variables)
+func (self Metafile) ExecPostExecuteActions(data *Data) error {
+	return self.Actions.PostExecute.ExecuteAll(data)
 }
 
 // Print prints self to stdout.
@@ -248,6 +248,8 @@ type Author struct {
 	Email string `json:"email,omitempty"`
 	// Homepage is the author's homepage URL.
 	Homepage string `json:"homepage,omitempty"`
+	// ModulePrefix is the authors default module prefix, your repo home.
+	ModulePrefix string `json:"modulePrefix,omitempty"`
 }
 
 // Group defines a group of templates.

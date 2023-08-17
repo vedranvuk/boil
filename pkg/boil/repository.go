@@ -13,6 +13,40 @@ import (
 	"strings"
 )
 
+// OpenRepository opens a repository at the specified path. It returns an
+// implementation that handles the specific path format.
+//
+// Currently supported backends:
+// * local filesystem (DiskRepository)
+//
+// If an error occurs it is returned with a nil repository.
+func OpenRepository(path string) (repo Repository, err error) {
+
+	// TODO: Detect repository path and return an appropriate implementaiton.
+
+	// TODO: Implement network loading.
+	if strings.HasPrefix(strings.ToLower(path), "http") {
+		return nil, errors.New("loading repositories from network not yet implemented")
+	}
+
+	// Open a directory on local fs as repository root.
+	var fi os.FileInfo
+	if fi, err = os.Stat(path); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("repository directory does not exist: %s", path)
+		}
+		return nil, fmt.Errorf("stat repository: %w", err)
+	}
+	if !fi.IsDir() {
+		return nil, fmt.Errorf("repository path is not a directory: %s", path)
+	}
+	if path, err = filepath.Abs(path); err != nil {
+		return nil, fmt.Errorf("get absolute repository path: %w", err)
+	}
+
+	return NewDiskRepository(path), nil
+}
+
 // Repository defines a location where Templates are stored.
 //
 // Templates inside a Repository are addressed by a path relative to the
@@ -66,41 +100,13 @@ type Repository interface {
 
 	// WalkDir walks the repository depth first and calls f for each file or
 	// directory found in the repository. Behaves exactly like filepath.WalkDir
-	// except that the path given to f will be a path relative to the repository 
+	// except that the path given to f will be a path relative to the repository
 	// root.
 	WalkDir(root string, f fs.WalkDirFunc) error
 }
 
-// OpenRepository opens a repository at the specified path. It returns an
-// implementation that handles the specific path format.
-//
-// Currently supported backends:
-// * local filesystem (DiskRepository)
-//
-// If an error occurs it is returned with a nil repository.
-func OpenRepository(path string) (repo Repository, err error) {
-
-	// TODO: Detect repository path and return an appropriate implementaiton.
-
-	// TODO: Implement network loading.
-	if strings.HasPrefix(strings.ToLower(path), "http") {
-		return nil, errors.New("loading repositories from network not yet implemented")
-	}
-
-	// Open a directory on local fs as repository root.
-	var fi os.FileInfo
-	if fi, err = os.Stat(path); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("repository directory does not exist: %s", path)
-		}
-		return nil, fmt.Errorf("stat repository: %w", err)
-	}
-	if !fi.IsDir() {
-		return nil, fmt.Errorf("repository path is not a directory: %s", path)
-	}
-	if path, err = filepath.Abs(path); err != nil {
-		return nil, fmt.Errorf("get absolute repository path: %w", err)
-	}
-
-	return NewDiskRepository(path), nil
+// IsRepoPath returns truth is the path is a path relative to repository.
+// This is true if the path has no relation prefix and is not rooted.
+func IsRepoPath(in string) bool {
+	return !strings.HasPrefix(in, ".") && !strings.HasPrefix(in, "/")
 }

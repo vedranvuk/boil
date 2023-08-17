@@ -345,6 +345,11 @@ func main() {
 						Help: "Path of the Template to be executed.",
 					},
 					&cmdline.Boolean{
+						LongName:  "edit",
+						ShortName: "e",
+						Help:      "Open output with editor after execution.",
+					},
+					&cmdline.Boolean{
 						LongName:  "overwrite",
 						ShortName: "w",
 						Help:      "Overwrite any existing output files without prompting.",
@@ -362,12 +367,7 @@ func main() {
 					&cmdline.Boolean{
 						LongName:  "no-metadata",
 						ShortName: "m",
-						Help:      "No metadata mode. Copy source template dir as is.",
-					},
-					&cmdline.Boolean{
-						LongName:  "edit",
-						ShortName: "e",
-						Help:      "Open output with editor after execution.",
+						Help:      "No metadata mode. Copy template-path dir recursively.",
 					},
 					&cmdline.Optional{
 						LongName:  "output-dir",
@@ -384,11 +384,16 @@ func main() {
 						ShortName: "g",
 						Help:      "Input Go file or package.",
 					},
+					&cmdline.Repeated{
+						LongName:  "json-input",
+						ShortName: "j",
+						Help:      "Input JSON file.",
+					},
 				},
 				Handler: func(c cmdline.Context) (err error) {
 					// Create Variables from var options.
 					var vars = make(boil.Variables)
-					if err = vars.AddAssignments(c.RawValues("var")...); err != nil {
+					if err = vars.SetAssignments(c.RawValues("var")...); err != nil {
 						return
 					}
 					// Execute Exec Command.
@@ -400,6 +405,7 @@ func main() {
 						NoMetadata:    c.IsParsed("no-metadata"),
 						EditAfterExec: c.IsParsed("edit"),
 						GoInputs:      c.RawValues("go-input"),
+						JsonInputs:      c.RawValues("json-input"),
 						Vars:          vars,
 						Config:        programConfig,
 					})

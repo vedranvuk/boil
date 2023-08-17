@@ -8,6 +8,7 @@ require (
 	github.com/adrg/xdg v0.4.0
 	github.com/vedranvuk/bast v0.0.0-00010101000000-000000000000
 	github.com/vedranvuk/cmdline v0.0.0-20230731121628-0e879a0d21b4
+	github.com/vedranvuk/tmpl v0.0.0-00010101000000-000000000000
 )
 
 require (
@@ -18,3 +19,5 @@ require (
 )
 
 replace github.com/vedranvuk/bast => ../bast
+
+replace github.com/vedranvuk/tmpl => ../tmpl

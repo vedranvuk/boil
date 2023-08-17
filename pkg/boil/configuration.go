@@ -40,7 +40,11 @@ func DefaultRepositoryDir() string {
 	return filepath.Join(DefaultConfigDir(), RepositoryDir)
 }
 
-// DefaultConfig returns a config set to defaults or an error.
+// DefaultConfig returns a config set to "sane" defaults or an error.
+// Sane as in:
+// * Author name from user account.
+// * ModulePrefix assumed on github with author name suffix.
+// * Editor defaults to vs code in a new window.
 func DefaultConfig() (config *Config, err error) {
 
 	var usr *user.User
@@ -53,10 +57,11 @@ func DefaultConfig() (config *Config, err error) {
 	}
 
 	config = &Config{
-		DefaultAuthor: Author{
-			Name: name,
+		Author: Author{
+			Name:         name,
+			ModulePrefix: "github.com/" + name,
 		},
-		ExternalEditor: Action{
+		Editor: Action{
 			Program: "code",
 			Arguments: []string{
 				"-n",
@@ -72,7 +77,7 @@ func DefaultConfig() (config *Config, err error) {
 // Config represents Boil configuration file.
 type Config struct {
 	// Author is the default template author info.
-	DefaultAuthor Author `json:"defaultAuthor,omitempty"`
+	Author Author `json:"author,omitempty"`
 	// RepositoryPath is the absolute path to the default repository.
 	RepositoryPath string `json:"repositoryPath"`
 
@@ -83,12 +88,12 @@ type Config struct {
 	// the output directory might contain an incomplete and invalid output.
 	DisableBackup bool `json:"disableBackup"`
 
-	// ExternalEditor defines the action to execute for the "edit" command, i.e.
+	// Editor defines the action to execute for the "edit" command, i.e.
 	// an external application to edit the template files and metafile.
 	//
 	// If no editor is defined Boil opens the Template directory in the default
 	// system file explorer.
-	ExternalEditor Action `json:"editor,omitempty"`
+	Editor Action `json:"editor,omitempty"`
 
 	// Overrides are the configuration overrides specified on command line.
 	// They exist at runtime only and are not serialized with Config.
@@ -120,13 +125,13 @@ type Config struct {
 // Print prints self to stdout.
 func (self *Config) Print() {
 	var wr = tabwriter.NewWriter(os.Stdout, 2, 2, 2, 32, 0)
-	fmt.Fprintf(wr, "DefaultAuthor.Name\t%s\n", self.DefaultAuthor.Name)
-	fmt.Fprintf(wr, "DefaultAuthor.Email\t%s\n", self.DefaultAuthor.Email)
-	fmt.Fprintf(wr, "DefaultAuthor.Homepage\t%s\n", self.DefaultAuthor.Homepage)
 	fmt.Fprintf(wr, "RepositoryPath\t%s\n", self.GetRepositoryPath())
 	fmt.Fprintf(wr, "DisableBackup\t%t\n", self.DisableBackup)
-	fmt.Fprintf(wr, "Editor.Program\t%s\n", self.ExternalEditor.Program)
-	fmt.Fprintf(wr, "Editor.Arguments\t%v\n", self.ExternalEditor.Arguments)
+	fmt.Fprintf(wr, "Author.Name\t%s\n", self.Author.Name)
+	fmt.Fprintf(wr, "Author.Email\t%s\n", self.Author.Email)
+	fmt.Fprintf(wr, "Author.Homepage\t%s\n", self.Author.Homepage)
+	fmt.Fprintf(wr, "Editor.Program\t%s\n", self.Editor.Program)
+	fmt.Fprintf(wr, "Editor.Arguments\t%v\n", self.Editor.Arguments)
 	wr.Flush()
 }
 

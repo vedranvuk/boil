@@ -14,6 +14,7 @@ import (
 	"text/template"
 
 	"github.com/vedranvuk/boil/pkg/boil"
+	"github.com/vedranvuk/tmpl"
 )
 
 // Tasks is a list of Task.
@@ -41,6 +42,8 @@ type Execute struct {
 	IsDir bool
 }
 
+type PresentPromptFunc = func(p *boil.Prompt) (def string, present bool)
+
 // PresentPrompts presents a prompt to the user on command line for each of
 // the prompts defined in metafiles of all tasks in self, in order as they
 // appear in self, depth first. If undeclaredOnly is true only prompts for
@@ -49,7 +52,7 @@ type Execute struct {
 // Values are stored in variables under names of Variables they prompt for. If
 // undeclaredOnly is true, a variable already defined in variables will not be
 // prompted for.
-func (self Tasks) PresentPrompts(variables boil.Variables, undeclaredOnly bool) (err error) {
+func (self Tasks) PresentPrompts(state *state, cb PresentPromptFunc) (err error) {
 
 	var (
 		ui     = boil.NewInterrogator(os.Stdin, os.Stdout)
@@ -57,20 +60,22 @@ func (self Tasks) PresentPrompts(variables boil.Variables, undeclaredOnly bool) 
 		exists bool
 	)
 
-	ui.Printf("Input variable values.\n")
-
 	for _, template := range self {
 		for _, prompt := range template.Metafile.Prompts {
-			if _, exists = variables[prompt.Variable]; exists && undeclaredOnly {
-				continue
+			if _, exists = state.Data.Vars[prompt.Variable]; exists {
+				// continue
 			}
 		Repeat:
+			var def, present = cb(prompt)
+			if !present {
+				continue
+			}
 			if input, err = ui.AskValue(
 				fmt.Sprintf("%s %s (%s)",
 					template.Metafile.Path,
 					prompt.Variable,
 					prompt.Description,
-				), "", prompt.RegExp,
+				), def, prompt.RegExp,
 			); err != nil {
 				return err
 			}
@@ -78,23 +83,27 @@ func (self Tasks) PresentPrompts(variables boil.Variables, undeclaredOnly bool) 
 				ui.Printf("Variable '%s' may not have an empty value.\n", prompt.Variable)
 				goto Repeat
 			}
-			variables[prompt.Variable] = strings.TrimSpace(input)
+			state.Data.Vars[prompt.Variable] = strings.TrimSpace(input)
 		}
 	}
 
 	return nil
 }
 
-// SetTargetsFromState calculates Execution.Target values of all Tasks
-// in self from state, expands any variable placeholders in the process and
-// returns nil. If an error occurs it is returned and self may be considered
-// invalid in undetermined state.
+// SetTargetsFromState expands template tokens in each execution.Target of self
+// and determines the absolute path of each in the output directory.
+// Returns an error if one occurs or nil.
 func (self Tasks) SetTargetsFromState(state *state) (err error) {
-	for _, template := range self {
-		for _, execution := range template.List {
+	for _, tmpl := range self {
+		for _, execution := range tmpl.List {
+			if execution.Target, err = boil.ExecuteTemplateString(
+				execution.Path, state.Data,
+			); err != nil {
+				return fmt.Errorf("execution %s: %w", execution.Target, err)
+			}
 			execution.Target = filepath.Join(
 				state.OutputDir,
-				state.Data.ReplaceAll(execution.Path),
+				execution.Target,
 			)
 		}
 	}
@@ -149,12 +158,12 @@ func (self Tasks) ExecPreParseActions() (err error) {
 // metafiles in the order they are defined, depth first. The first error that
 // occurs from any action is returned and execution stopped or nil if everything
 // successed.
-func (self Tasks) ExecPreExecuteActions(variables boil.Variables) (err error) {
+func (self Tasks) ExecPreExecuteActions(data *boil.Data) (err error) {
 	for _, template := range self {
 		if template.Metafile == nil {
 			continue
 		}
-		if err = template.Metafile.ExecPreExecuteActions(variables); err != nil {
+		if err = template.Metafile.ExecPreExecuteActions(data); err != nil {
 			return
 		}
 	}
@@ -165,12 +174,12 @@ func (self Tasks) ExecPreExecuteActions(variables boil.Variables) (err error) {
 // metafiles in the order they are defined, depth first. The first error that
 // occurs from any action is returned and execution stopped or nil if everything
 // successed.
-func (self Tasks) ExecPostExecuteActions(variables boil.Variables) (err error) {
+func (self Tasks) ExecPostExecuteActions(data *boil.Data) (err error) {
 	for _, template := range self {
 		if template.Metafile == nil {
 			continue
 		}
-		if err = template.Metafile.ExecPostExecuteActions(variables); err != nil {
+		if err = template.Metafile.ExecPostExecuteActions(data); err != nil {
 			return
 		}
 	}
@@ -212,18 +221,18 @@ func (self Tasks) Execute(state *state, print bool) (err error) {
 			}
 			var (
 				buf  []byte
-				tmpl = template.New(filepath.Base(item.Source)).Funcs(state.Data.Bast.FuncMap())
+				tt   = template.New(filepath.Base(item.Source)).Funcs(state.Data.Bast.FuncMap())
 				file *os.File
 			)
 			if buf, err = state.Repository.ReadFile(item.Source); err != nil {
 				return fmt.Errorf("read template file '%s': %w", item.Source, err)
 			}
-			if tmpl, err = tmpl.Parse(string(buf)); err != nil {
+			if tt, err = tt.Parse(string(buf)); err != nil {
 				return fmt.Errorf("parse template file: %w", err)
 			}
 			if print {
-				fmt.Printf("Template %s\n", tmpl.Name())
-				boil.PrintTemplate(tmpl)
+				fmt.Printf("Template %s\n", tt.Name())
+				tmpl.Print(tt)
 			}
 			if err = os.MkdirAll(filepath.Dir(item.Target), os.ModePerm); err != nil {
 				return fmt.Errorf("create target file dir '%s': %w", filepath.Dir(item.Target), err)
@@ -232,7 +241,7 @@ func (self Tasks) Execute(state *state, print bool) (err error) {
 				return fmt.Errorf("create target file '%s': %w", item.Target, err)
 			}
 			defer file.Close()
-			if err = tmpl.Execute(file, state.Data); err != nil {
+			if err = tt.Execute(file, state.Data); err != nil {
 				return fmt.Errorf("execute template '%s' into target '%s': %w", item.Source, item.Target, err)
 			}
 		}

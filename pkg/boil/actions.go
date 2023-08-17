@@ -36,26 +36,41 @@ type Action struct {
 	NoFail bool `json:"noFail,omitempty"`
 }
 
-// Execute executes the Action and returns nil on success of error if one occurs.
-func (self *Action) Execute(variables Variables) (err error) {
+// Execute executes the Action and returns nil on success or an error.
+// It expands any template tokens in self definition using data.
+func (self *Action) Execute(data *Data) (err error) {
 
-	var args []string
+	var (
+		prog string
+		args []string
+	)
+	if prog, err = ExecuteTemplateString(self.Program, data); err != nil {
+		return fmt.Errorf("expand program: %w", err)
+
+	}
 	for _, arg := range self.Arguments {
-		args = append(args, variables.ReplacePlaceholders(arg))
+		if arg, err = ExecuteTemplateString(arg, data); err != nil {
+			return fmt.Errorf("expand argument %s: %w", arg, err)
+		}
+		args = append(args, arg)
 	}
 
 	var cmd = exec.Command(
-		variables.ReplacePlaceholders(self.Program),
+		prog,
 		args...,
 	)
-	cmd.Dir = variables.ReplacePlaceholders(self.WorkDir)
+	if cmd.Dir, err = ExecuteTemplateString(self.WorkDir, data); err != nil {
+		return fmt.Errorf("expand workdir: %w", err)
+	}
 	for k, v := range self.Environment {
-		cmd.Env = append(cmd.Env, k+"="+variables.ReplacePlaceholders(v))
+		if v, err = ExecuteTemplateString(v, data); err != nil {
+			return fmt.Errorf("expand env: %w", err)
+		}
+		cmd.Env = append(cmd.Env, k+"="+v)
 	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	fmt.Println(cmd.String())
 	if err = cmd.Run(); err != nil && !self.NoFail {
 		return fmt.Errorf("action execution failed: %w", err)
 	}
@@ -67,9 +82,9 @@ type Actions []*Action
 
 // ExecuteAll executes all actions in self. Returns the error of the first
 // action that returns it and stops further execution or nil if no errors occur.
-func (self Actions) ExecuteAll(variables Variables) (err error) {
+func (self Actions) ExecuteAll(data *Data) (err error) {
 	for _, action := range self {
-		if err = action.Execute(variables); err != nil {
+		if err = action.Execute(data); err != nil {
 			return
 		}
 	}

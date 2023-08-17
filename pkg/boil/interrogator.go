@@ -47,7 +47,9 @@ func (self *Interrogator) AskValue(title, def, regex string) (result string, err
 		if result, err = self.rw.ReadString('\n'); err != nil {
 			return
 		}
-		result = strings.TrimSpace(result)
+		if result = strings.TrimSpace(result); result == "" && def != "" {
+			result = def
+		}
 		if regex != "" {
 			var match bool
 			if match, err = regexp.MatchString(regex, result); err != nil {

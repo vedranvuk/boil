@@ -32,7 +32,7 @@ func Run(config *Config) (err error) {
 		printer  = boil.NewPrinter(os.Stdout)
 		repo     boil.Repository
 		meta     *boil.Metafile
-		vars     = make(boil.Variables)
+		data     = boil.NewData()
 		tmplPath = config.TemplatePath
 		repoPath = config.Config.GetRepositoryPath()
 	)
@@ -70,12 +70,12 @@ func Run(config *Config) (err error) {
 		return
 	}
 
-	vars.AddNew(boil.Variables{
+	data.Vars.AddNew(boil.Variables{
 		"TemplatePath": config.TemplatePath,
 	})
 
 	if config.EditAfterDefine {
-		return config.Config.ExternalEditor.Execute(vars)
+		return config.Config.Editor.Execute(data)
 	}
 
 	return nil
