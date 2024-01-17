@@ -29,11 +29,15 @@ func OpenRepository(path string) (repo Repository, err error) {
 		return nil, errors.New("loading repositories from network not yet implemented")
 	}
 
+	if err = os.MkdirAll(path, os.ModePerm); err != nil {
+		return nil, fmt.Errorf("create repository directory %s: %w", path, err)
+	}
+
 	// Open a directory on local fs as repository root.
 	var fi os.FileInfo
 	if fi, err = os.Stat(path); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("repository directory does not exist: %s", path)
+			return nil, fmt.Errorf("directory does not exist: %s", path)
 		}
 		return nil, fmt.Errorf("stat repository: %w", err)
 	}
@@ -76,7 +80,7 @@ type Repository interface {
 	// OpenMeta returns a *Metafile at path or an error if it does not exist or
 	// some other error occurs.
 	OpenMeta(path string) (*Metafile, error)
-	// SaveMeta saves the Metafile into repository accorsing to its Path or
+	// SaveMeta saves the Metafile into repository according to its Path or
 	// returns an error. It overwrites the target if it exists or creates it if
 	// it does not. Creates required directories along the path.
 	SaveMeta(meta *Metafile) error

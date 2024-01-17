@@ -232,7 +232,7 @@ func (self Tasks) Execute(state *state, print bool) (err error) {
 			}
 			if print {
 				fmt.Printf("Template %s\n", tt.Name())
-				tmpl.Print(tt)
+				tmpl.PrintTemplate(tt)
 			}
 			if err = os.MkdirAll(filepath.Dir(item.Target), os.ModePerm); err != nil {
 				return fmt.Errorf("create target file dir '%s': %w", filepath.Dir(item.Target), err)

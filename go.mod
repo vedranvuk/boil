@@ -2,8 +2,6 @@ module github.com/vedranvuk/boil
 
 go 1.21.0
 
-replace github.com/vedranvuk/cmdline => ../cmdline
-
 require (
 	github.com/adrg/xdg v0.4.0
 	github.com/vedranvuk/bast v0.0.0-00010101000000-000000000000
@@ -17,6 +15,8 @@ require (
 	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/tools v0.12.0 // indirect
 )
+
+replace github.com/vedranvuk/cmdline => ../cmdline
 
 replace github.com/vedranvuk/bast => ../bast
 

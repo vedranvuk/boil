@@ -405,7 +405,7 @@ func main() {
 						NoMetadata:    c.IsParsed("no-metadata"),
 						EditAfterExec: c.IsParsed("edit"),
 						GoInputs:      c.RawValues("go-input"),
-						JsonInputs:      c.RawValues("json-input"),
+						JsonInputs:    c.RawValues("json-input"),
 						Vars:          vars,
 						Config:        programConfig,
 					})
